@@ -54,7 +54,7 @@ MEDIA_PUBLIC_BASE = "https://media.example.com"
 SITE_ORIGIN = "https://example.com"
 CMS_ORIGIN = "https://cms.example.com"
 CF_ACCESS_TEAM_DOMAIN = "<team>.cloudflareaccess.com"
-BOOTSTRAP_ADMIN_EMAIL = "owner@example.com"
+BOOTSTRAP_ADMIN_EMAIL = "hello@chuechstudio.co.ke"
 
 # --- Local development only (.dev.vars, never in Cloudflare) -----------------
 # Create .dev.vars at the repo root (the directory `npm run dev:cms` runs in):
