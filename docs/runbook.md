@@ -1,194 +1,285 @@
 # Runbook
 
-Operational procedures for the Marino CMS. Written as each capability landed, so
-it is **complete for Phases 0–5** and grows from Phase 6 onward (the full version
-is a Phase 10 handover deliverable — see the marker at the end).
+Operational procedures for the Chuech CMS admin project (`cms2chuech`). The
+public read API and form intake live in the public-site repo; this runbook covers
+the admin database, media, forms, users, local development, seeding and deploy
+verification.
 
 ---
 
 ## 1. Restore the database after a bad migration
 
-This is the rollback path for `migrations/*.sql`. **There is deliberately no
-down-migration**: writing one for a schema that may already hold content is how
-you lose data twice. Restore a point in time instead.
+There is deliberately no down-migration. A schema that may already hold content
+should be restored point-in-time, not “undone” by a second script.
 
-### 1a. Time Travel (remote: preview and production)
-
-D1 keeps a rolling window of restore points and can rewind the whole database to
-any second inside it.
+### 1a. D1 Time Travel (preview and production)
 
 ```bash
-# What can I restore to?
-npx wrangler d1 time-travel info marino-cms            # production
-npx wrangler d1 time-travel info marino-cms-preview    # preview
+# Replace marino-cms with the database name configured in admin/wrangler.toml.
+npx wrangler d1 time-travel info marino-cms
+npx wrangler d1 time-travel info marino-cms-preview
 
-# Rewind (Unix seconds, or a bookmark from the output above)
 npx wrangler d1 time-travel restore marino-cms --timestamp=1750000000
 npx wrangler d1 time-travel restore marino-cms --bookmark=<bookmark>
 ```
 
-Also available in the dashboard: **Workers & Pages → D1 → \<database\> → Time
-Travel**, where the retention window for your plan is shown.
+The dashboard path is **Workers & Pages → D1 → database → Time Travel**.
 
-**Three things to know before you use it:**
+Three cautions:
 
-1. **It rewinds the whole database, not one table.** A restore to 10:00 also
-   discards submissions, submissions' status changes and audit rows written
-   after 10:00. If all you need is a form you accidentally deleted, use the
-   Admin API / inbox instead — do not rewind the database for it.
-2. **Take the timestamp first.** Run `time-travel info` *before* the change you
-   are worried about, so you have a known-good bookmark. A point after the
-   damage is not a recovery.
-3. **Nothing is lost twice.** Time Travel is non-destructive to the *existing*
-   database beyond the rewind point — but once you rewind, the rows after that
-   point are gone. Export anything you need first
-   (`npx wrangler d1 export marino-cms --remote --output backup.sql`).
+1. **It rewinds the whole database.** Submissions, status changes and audit rows
+   written after the bookmark are also lost. Recover one submission through the
+   inbox instead of rewinding for it.
+2. **Take the bookmark before the risky change**, not after the damage.
+3. **Export first** if you need anything after the restore point:
+   `npx wrangler d1 export marino-cms --remote --output backup.sql`.
 
-> **Not verified in this repo.** `wrangler d1 time-travel` operates on the
-> remote database and requires an authenticated account. Running it here fails
-> with `it's necessary to set a CLOUDFLARE_API_TOKEN environment variable`
-> (exit 1). It needs `npx wrangler login` as the owner — see
-> [`cloudflare-setup.md`](cloudflare-setup.md) §0. Confirm the command against
-> the preview database before you ever need it in anger.
+The admin API needs an authenticated Cloudflare session for all remote
+operations. If Wrangler says the auth token expired, run `npx wrangler login` or
+set `CLOUDFLARE_API_TOKEN`.
 
-### 1b. Local rollback (development)
+### 1b. Local reset (development)
 
-Local D1 is a SQLite file under `.wrangler/state` with no Time Travel. Delete the
-state and re-apply; local data is disposable by definition.
+Local D1/R2/KV live under `.wrangler/state` at the repo root. Local data is
+disposable:
 
 ```bash
-rm -rf admin/.wrangler/state
+# PowerShell: Remove-Item -Recurse -Force .wrangler/state
+rm -rf .wrangler/state
 npm run db:migrate:local
+npm run seed:chuech
 ```
 
-### 1c. If a migration itself is faulty
+### 1c. A faulty applied migration
 
-If `0001_init.sql` or a later file is wrong, **do not edit an applied file** —
-wrangler tracks applied migrations by name and will not re-run one it has
-already recorded. Add a new numbered migration that corrects it
-(`0003_fix_….sql`) and apply that. Editing an applied migration silently
-diverges local, preview and production.
+Never edit an applied file — Wrangler tracks migrations by name and will not run
+it again. Add a new numbered migration and apply that. Editing an applied
+migration silently diverges local, preview and production.
 
 ---
 
 ## 2. Rotate a secret
 
-Secrets are set per Pages project and are never readable back.
+Secrets are per Pages project and cannot be read back.
 
 ```bash
-npx wrangler pages secret put CF_ACCESS_AUD  --project-name marino-cms
-npx wrangler pages secret put TURNSTILE_SECRET --project-name marino-site
-npx wrangler pages secret list --project-name marino-cms   # names only
+npx wrangler pages secret put CF_ACCESS_AUD --project-name cms2chuech
+npx wrangler pages secret list --project-name cms2chuech   # names only
 ```
 
-Redeploy the project afterwards so the new value is bound. `PREVIEW_SECRET`
-rotation invalidates outstanding preview links (they are HMAC-signed, 30 min).
-`IP_HASH_SALT` rotation makes previously stored `ip_hash` values no longer
-comparable to new ones — that is fine; the hashes are for abuse correlation, not
-identity, and no raw IP is ever stored.
+Redeploy after changing a secret. `PREVIEW_SECRET` rotation invalidates
+outstanding preview links. `IP_HASH_SALT` rotation makes old submission hashes
+non-comparable to new ones; that is acceptable because hashes are for abuse
+correlation, never identity.
 
-The **25 customer-variable limit** counts a name in both preview and production
-twice. Check with `secret list` before adding.
+The 25-variable limit counts the same name in preview and production twice.
 
 ---
 
-## 3. Add a form to the site
+## 3. Add or change a form
 
-No CMS code change and no migration (spec §4.5).
+Normal forms need no CMS code change and no migration.
 
-1. Register the source in the CMS **Forms** screen (`label`, `enabled`,
-   notification emails, success message).
-2. On the site, render the shared `ContactForm` with that `source`.
-3. The intake endpoint accepts it immediately.
+1. Open **Forms** in the admin. This screen is admin-only.
+2. Register the source with its label, enabled state, notification recipients and
+   success message.
+3. Render the site's shared form with that exact `source`.
+4. The public intake accepts it immediately after the site is updated.
 
-**Exception — service-page forms need nothing at all.** Publishing a
-`service_page` auto-registers `<slug>-hero` and `<slug>-callback`
-(`auto_registered = 1`), so a new service page gets working forms as a side
-effect. The seven sources that exist today are seeded by
-`migrations/0002_seed_forms.sql`.
+Publishing a `service_page` auto-registers `<slug>-hero` and
+`<slug>-callback` (`auto_registered = 1`). The seven sources shipped today are
+seeded by `migrations/0002_seed_forms.sql`.
+
+Submissions are immutable evidence. Status and internal notes can change; a
+submission can only be permanently deleted by an admin. Opening one marks it
+read automatically; status and notes require explicit saves.
+
+CSV export is admin-only and uses the same filters as the inbox. Every export is
+written to the audit log.
 
 ---
 
 ## 4. Add a service page
 
-1. In the CMS, **Pages → New page → Service page**. Give it the slug that should
-   appear in the URL (`/ppc-manchester`), *not* the service collection's slug.
-2. Fill the group that matches the reference design: hero, feature, projects,
-   pillars, why, FAQ.
-3. Publish. The public API serves it at `/api/public/pages/:slug`, so the site's
-   catch-all `/:slug` route renders it with no route change and no deploy.
+1. In **Pages → New page → Service page**, use the URL slug (for example
+   `ppc`), not the Services collection's internal slug.
+2. Fill hero, feature, projects, pillars, why and FAQ.
+3. Publish. A new service page needs no deploy: it becomes available through the
+   public page API and the site's catch-all route.
 
-Its `projects.tag` (or `projects.slugs`) drives the carousel; a tag must match a
-project's `services[]` values, which must themselves be existing service titles.
+`projects.tag` or `projects.slugs` drives the carousel. Tags must match a
+project's `services[]` values, and those values must be existing service titles.
 
 ---
 
-## 5. Add an editor
+## 5. Add a CMS user
 
-1. **Cloudflare Access → the `Marino CMS` application → Policies → Team** → add
-   the person's email (or their identity-provider group). This lets them reach
-   `cms.<domain>` at all.
-2. **CMS → Users → invite by email**, choosing `editor` (or `viewer`). This is
-   what gives them a role; Access alone only gets them to the login screen.
+Both steps are required:
 
-Both steps are required, and the API checks the `users` row on every request —
-being in Access with no `users` row is a 403, by design. Deactivating a user in
-the CMS takes effect immediately without touching Access.
+1. **Cloudflare Access → the Chuech CMS application → Policies** — add the
+   person's email or identity-provider group. This lets them reach the admin
+   hostname.
+2. **CMS → Users → Invite user** — choose `viewer`, `editor` or `admin`. This is
+   the role the API checks on every request.
 
-`BOOTSTRAP_ADMIN_EMAIL` self-creates the **first** admin only, and only while the
-`users` table is empty. It is not a backdoor afterwards.
+Being in Access with no active `users` row is a 403 by design. Deactivating the
+CMS row takes effect on the next request without changing Access.
+
+`BOOTSTRAP_ADMIN_EMAIL` creates the first admin only while the `users` table is
+empty; it is not a backdoor afterwards.
+
+Role boundary:
+
+- **Viewer** — read-only content, media and submissions.
+- **Editor** — edit/publish content and upload media; no deletes, forms,
+  settings, users, audit, or CSV export.
+- **Admin** — everything, including `_site`, `_navigation` and `_footer`
+  mutation, content deletion, user/form management and audit.
 
 ---
 
 ## 6. Local development
 
+Requirements: Node `>=22.22.0` and an npm install at the repo root.
+
 ```bash
-npm run dev:admin   # admin SPA only (hot reload, :5174) — fastest for UI work
-npm run dev:cms     # built SPA + Pages Functions (wrangler pages dev)
-npm run db:migrate:local
+npm run db:migrate:local   # local D1 schema + form-source seeds
+npm run seed:chuech        # local Chuech content and media
+npm run dev:cms            # Pages Functions on 127.0.0.1:8788
+npm run dev:admin          # Vite SPA, proxies /api to :8788
 ```
 
-The admin API bypasses Access **only** when the request host is loopback **and**
-`admin/.dev.vars` sets `DEV_USER_EMAIL`. That file is git-ignored and must never
-be set in Cloudflare; on any real hostname the API fails closed.
+`dev:cms` generates a git-ignored root `wrangler.toml` from
+`admin/wrangler.toml`. Edit the admin config, never the generated file.
 
-Health check while the server is up:
-`curl http://127.0.0.1:8788/api/admin/health` — expect `ok: true` with all three
-bindings reporting reachable.
+Local auth uses `.dev.vars` at the repo root:
+
+```dotenv
+DEV_USER_EMAIL=owner@example.com
+```
+
+The bypass requires both that variable and a loopback hostname. Unknown emails
+are rejected. Never set `DEV_USER_EMAIL` in Cloudflare.
+
+Health check:
+
+```bash
+curl http://127.0.0.1:8788/api/admin/health
+# {"ok":true,"bindings":{...},"mediaPublicBase":"https://media.example.com"}
+```
+
+The Vite SPA normally takes `:5174`; if that port is occupied it may choose
+`:5175`. The API target remains `127.0.0.1:8788`.
+
+Media thumbnails in the admin point at `MEDIA_PUBLIC_BASE`. The local default is
+`https://media.example.com`, so R2 objects can exist and render as broken images
+locally. Upload, metadata editing, usage checks and soft delete still work.
 
 ---
 
-## 6b. Sync the Phase 6 drop-in into the site repo
-
-The site's public API and form intake are authored **here** (in
-`site-integration/`) and copied into the site repo by the sync script — never
-edit the copy on the site side; the next sync would wipe the edit.
+## 7. Seed the Chuech content
 
 ```bash
-npm run sync:site              # destination: ../cms/my-project
-DEST=/other/path npm run sync:site
-npx tsc -p site-integration/tsconfig.json    # typecheck the drop-in
+npm run seed:chuech          # local
+npm run seed:chuech:remote   # remote; requires migrations and Cloudflare auth
 ```
 
-The script mirrors `functions/`, `public/_routes.json`, `wrangler.toml` and
-`client/` → `src/cms/`, then warns if the site repo's `functions/` holds files
-the drop-in does not own (sign of a hand-edit to review). The permanent local
-end-to-end recipe (public GETs + a form POST against local D1/KV) is in
-[`../site-integration/README.md`](../site-integration/README.md), § "Order of
-operations".
+The script reads canonical content from `../../website/my-project/src` by
+default; override with `CHUECH_SITE_ROOT`.
 
-After syncing, the site repo's `package.json` needs **no new dependencies**: the
-functions are dependency-free TypeScript and the client imports React
-(`useEffect`/`useState`), which the site already has.
+It uploads 25 SVGs (16 site assets plus 9 generated client wordmark
+placeholders) under `uploads/YYYY/MM/chuech-seed/`, then upserts:
+
+- 9 documents: site settings, navigation, footer, home, services index, work
+  index, and the Branding, Web Design and SEO service pages;
+- 37 published entries: 5 services, 13 projects, 6 testimonials, 9 clients and
+  4 articles.
+
+Every record is validated at publish level before it is written. The seed is
+idempotent for records it owns: rerunning overwrites their content, increments
+record versions and bumps `content_version`.
+
+Seed content is intentionally not a migration. Copy belongs to the site repo and
+can be re-seeded without inventing a rollback path. The local `/about` record is
+a non-seed fixture for generic-page testing and is left alone.
+
+The seed does not use a transaction because `wrangler d1 execute --file` rejects
+`BEGIN`/`COMMIT`. Every statement is an idempotent upsert, so a partial run can be
+safely repeated.
+
+Only three service pages exist because the source site has page modules for
+Branding, Web Design and SEO. PPC and Video remain services entries.
 
 ---
 
-## 7. Still to be written (Phase 10)
+## 8. Deploy and verify
 
-- Deploying both projects in release order (migrations → CMS → seed/import →
-  site), including the parity capture from spec §8.3.
-- Media: importing existing bucket objects, the soft-delete/trash path, and
-  purging.
-- Submissions: retention and the "purge older than…" action, plus the CSV
-  export audit.
-- Backing up and restoring the KV namespace and the R2 prefix.
+### Before deploying
+
+1. `npm run typecheck && npm test && npm run build`.
+2. Confirm `admin/wrangler.toml` contains the **real** D1 ids/names, R2 bucket,
+   KV ids, production origins and Access team domain. The project name is
+   already `cms2chuech`; resource ids and origin variables still need the values
+   from the Cloudflare account.
+3. `npx wrangler login` or export a scoped `CLOUDFLARE_API_TOKEN`.
+4. Apply migrations before deploying code that expects them:
+   `npm run db:migrate:prod`.
+
+### Deploy
+
+From the repo root:
+
+```bash
+npm run build
+npx wrangler pages deploy admin/dist --project-name cms2chuech
+```
+
+Pages Functions must be included from the repo-root `functions/` directory. If
+the deploy summary does not list a Functions bundle, stop and fix the project’s
+root/build configuration before treating the release as complete.
+
+### Verify
+
+```bash
+curl -sS https://cms2chuech.pages.dev/api/admin/health
+curl -sS https://cms2chuech.pages.dev/api/admin/me
+```
+
+Expected: health returns JSON with `"ok":true` and all three bindings reachable;
+`/me` returns the signed-in role and capabilities. If `/api/admin/health`
+returns the SPA’s HTML, Functions are not deployed or the request is falling
+through to the static asset handler — redeploy with the Functions directory and
+check the Pages build output.
+
+Then verify the public site separately against the site project: published page
+JSON, published collection entries, and one fixed-shape form POST. The admin
+deploy does not deploy the public site.
+
+### Current deployment state
+
+- Local admin API, SPA, seed and role flows are verified.
+- The production project exists at `https://cms2chuech.pages.dev`, but
+  `/api/admin/health` currently returns SPA HTML, so the Functions route is not
+  verified.
+- Production D1/R2/KV bindings, Access team/AUD and the real media origin remain
+  unconfirmed.
+- Cloudflare auth in this environment is expired and the refresh token is
+  invalid; run `npx wrangler login` interactively before remote work.
+
+---
+
+## 9. Backups, retention and recovery
+
+- **D1:** use scheduled `npx wrangler d1 export <db> --remote --output …` plus
+  Time Travel. Test a restore before relying on it.
+- **R2:** object keys are immutable and uploads are never overwritten. Media
+  deletes are soft deletes; the R2 object remains. Configure bucket lifecycle /
+  backups outside this repo if the account requires them.
+- **KV:** holds `content_version` and rate-limit counters, not durable content.
+  A lost CACHE namespace can be recreated; publish once afterwards to repopulate
+  the current version.
+- **Submissions:** there is no automatic purge job. Archive before deleting.
+  Deletes are permanent and require an admin.
+- **Audit log:** append-only from the application’s perspective. It includes
+  content writes, publish/unpublish/revert, media changes, user changes, form
+  changes, submission status/bulk actions and CSV exports.

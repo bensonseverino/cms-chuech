@@ -41,8 +41,12 @@ preview_id = "<preview id — same namespace as the CMS>"
 
 # --- Plain variables (public; no secrets here) -------------------------------
 [vars]
+# The public read API resolves media references to
+# `${MEDIA_PUBLIC_BASE}/<r2_key>`. `/media` is served by this project's
+# functions/media/[[path]].ts, so the site works without a separate R2 custom
+# domain. Set this to a `https://media.<domain>` origin if one is configured.
+MEDIA_PUBLIC_BASE = "/media"
 # TODO(owner): set after Phase 1 — see docs/cloudflare-setup.md §4 and §11.
-MEDIA_PUBLIC_BASE = "https://media.example.com"
 SITE_ORIGIN = "https://example.com"
 
 # Secrets for this project (set with `wrangler pages secret put`, never here):

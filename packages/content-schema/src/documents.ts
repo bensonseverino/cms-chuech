@@ -73,7 +73,7 @@ export const siteFields: FieldDef[] = [
       { path: 'titleTemplate', type: 'text', label: 'Title template', required: true, max: 70,
         help: 'Include %s where the page title goes.' },
       { path: 'description', type: 'textarea', label: 'Default description', max: 160 },
-      { path: 'image', type: 'media', label: 'Default social image', accept: 'image' },
+      { path: 'ogImage', type: 'media', label: 'Default social image', accept: 'image' },
     ],
   },
   { path: 'social', type: 'repeater', label: 'Social links', itemLabel: 'Link',
@@ -124,6 +124,8 @@ export const footerDocSchema = draftObject({
   links: z.array(draftObject({ label: inlineText(80), to: linkTarget })).max(MAX_ARRAY),
   ctaLabel: inlineText(80),
   ctaTo: linkTarget,
+  /** The copyright line above the hairline. */
+  legal: inlineText(200),
 })
 
 export type FooterDoc = z.infer<typeof footerDocSchema>
@@ -138,6 +140,7 @@ export const footerFields: FieldDef[] = [
     ] },
   { path: 'ctaLabel', type: 'text', label: 'Button label' },
   { path: 'ctaTo', type: 'link', label: 'Button link' },
+  { path: 'legal', type: 'text', label: 'Copyright line' },
 ]
 export const footerRequired = requiredPaths(footerFields)
 
@@ -153,6 +156,10 @@ export const homeDocSchema = draftObject({
   introStatement: draftObject({
     text: inlineText(),
     cta,
+  }),
+  /** The "Our Services" band on the Home page (the rows come from `services`). */
+  services: draftObject({
+    heading: inlineText(200),
   }),
   latestWork: draftObject({
     heading: inlineText(200),
@@ -243,6 +250,9 @@ export const homeFields: FieldDef[] = [
       { path: 'label', type: 'text', label: 'Label' },
       { path: 'to', type: 'link', label: 'Link' },
     ] },
+  ] },
+  { path: 'services', type: 'group', label: 'Services section', fields: [
+    { path: 'heading', type: 'text', label: 'Heading' },
   ] },
   { path: 'stats', type: 'group', label: 'Experience section', fields: [
     { path: 'marquee', type: 'list', of: 'text', label: 'Marquee phrases', max: 10 },

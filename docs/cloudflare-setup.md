@@ -1,12 +1,21 @@
-# Cloudflare Setup — Marino CMS (Phase 1)
+# Cloudflare Setup — Chuech CMS
 
-> **Who does what.** Steps marked **[Owner]** are Cloudflare dashboard/account actions with no repo-side equivalent — the agent cannot do them and cannot proceed past the blocks below without the values they return. **[Agent]** items are already done or will be done in the repo.
+> **Current state (October 2026).** The admin Pages project is already named
+> `cms2chuech` and is deployed at `https://cms2chuech.pages.dev`. The local
+> admin stack, content seed and role flows are complete. The production
+> Functions route and binding values are **not yet verified**; see the
+> [runbook](runbook.md#8-deploy-and-verify).
 >
-> **Read the two surprises first.** The spec's opening line ("the site is connected to Cloudflare Pages") and its "existing R2 bucket" do **not** match the repo:
-> - **There is no `wrangler.toml` and no `functions/` anywhere** — Pages has never been configured from this repo. Step 10 creates *both* Pages projects.
-> - **There is no R2 bucket.** Media is ~30 local SVGs under `src/assets/marino/` addressed through the `assets.ts` slot map. Step 1 creates the bucket; there is nothing existing to "share" or "import" yet.
->
-> Confirmed by the Phase 0 inventory: [`cms-inventory.md`](cms-inventory.md).
+> This file is the account setup checklist. Resource names below
+> (`marino-cms`, `marino-media`, `marino-site`) are historical suggestions —
+> use the D1/R2/KV resources already shared with the public site, and put their
+> real names/ids into `admin/wrangler.toml`. Do not create duplicate resources
+> just to match an example name.
+
+> **Who does what.** Steps marked **[Owner]** are Cloudflare dashboard/account
+> actions with no repo-side equivalent. **[Agent]** items are implemented in the
+> repo. Cloudflare authentication in this environment is currently expired, so
+> remote deploy and verification remain owner actions.
 
 ---
 
@@ -14,7 +23,7 @@
 
 **[Owner]**
 
-1. Install/verify Node 20+ and log in:
+1. Install/verify Node `>=22.22.0` and log in:
    ```bash
    npx wrangler --version      # expect v4.x
    npx wrangler login
@@ -29,13 +38,14 @@
 
 ## 1. R2 bucket **[Owner]**
 
-There is no existing bucket, so create one and treat it as the shared bucket for site + CMS.
+If the site already has a media bucket, **reuse it** and record the exact name.
+Otherwise create one and treat it as the shared bucket for site + CMS.
 
 ```bash
-# create (suggested name; anything works, just record it)
+# only if the shared bucket does not exist yet
 npx wrangler r2 bucket create marino-media
 
-# confirm it exists
+# confirm what exists either way
 npx wrangler r2 bucket list
 ```
 
@@ -49,9 +59,12 @@ npx wrangler r2 bucket list
 
 ## 2. D1 databases **[Owner]**
 
-Two databases — production and preview — so preview deployments never touch production rows.
+Two databases — production and preview — so preview deployments never touch
+production rows. If the public site already uses a shared production database,
+reuse it; a separate preview database is still required.
 
 ```bash
+# only if the shared databases do not exist yet
 npx wrangler d1 create marino-cms
 npx wrangler d1 create marino-cms-preview
 ```
@@ -76,9 +89,9 @@ npx wrangler kv namespace create CACHE
 npx wrangler kv namespace create CACHE --preview-name marino-cache-preview
 ```
 
-The `CACHE` namespace holds `content_version` (the cache-busting counter) and the form rate-limit counters.
+The `CACHE` namespace holds `content_version` (the cache-busting counter) and the form rate-limit counters. Reuse the site's existing namespace if it has one; create separate preview storage if production isolation is required.
 
-**Send both ids to the agent.** Verify:
+**Record both ids in `admin/wrangler.toml`.** Verify:
 ```bash
 npx wrangler kv namespace list
 ```
@@ -95,7 +108,7 @@ This is the public read path for every image/video; `MEDIA_PUBLIC_BASE` is set t
 - Wait for the certificate/status to show **Active** before moving on.
 - **Do not enable the `r2.dev` URL for production.** It is rate-limited and not for real traffic. (It is fine to leave it on temporarily while testing, but `MEDIA_PUBLIC_BASE` must be the custom domain.)
 
-**Verification (must pass before Phase 1 is "Done"):** upload one throwaway object and fetch it over the custom domain:
+**Verification (must pass before the shared media origin is considered ready):** upload one throwaway object and fetch it over the custom domain:
 ```bash
 echo "ok" > /tmp/r2-check.txt
 npx wrangler r2 object put marino-media/_setup-check/r2-check.txt --file /tmp/r2-check.txt --content-type text/plain
@@ -154,10 +167,10 @@ Note: response-header *Transform Rules* each own their header, so this rule adds
 
 **Dashboard:** Zero Trust → **Access** → **Applications** → **Add an application** → **Self-hosted**.
 
-1. **Application name:** `Marino CMS`
+1. **Application name:** `Chuech CMS`
 2. **Session duration:** `24 hours`
 3. **Public hostname:** `cms.<domain>` → path (leave blank).
-4. **Add a second public hostname** for each Pages preview hostname pattern of the CMS project. Preview deployments get a random subdomain, so add `*.<cms-project>.pages.dev` (or the specific preview hostnames) — otherwise previews are wide open. Production `marino-cms` deployment hostnames can be added too if not covered by the custom domain.
+4. **Add a second public hostname** for Pages previews: `*.cms2chuech.pages.dev` (or the specific preview hostnames), otherwise previews are wide open. Add `cms2chuech.pages.dev` too unless a custom domain covers it.
 5. **Access policies** → **Add a policy**:
    - Name: `Team`
    - Action: **Allow**
@@ -179,8 +192,8 @@ The CMS API verifies `Cf-Access-Jwt-Assertion` (RS256, via `jose`) against `http
 
 **Dashboard:** Turnstile → **Add widget**:
 
-- **Widget name:** `Marino site forms`
-- **Hostnames:** add the production site hostname `<domain>` **and** the preview hostnames you test forms on (e.g. `marino-site.pages.dev`, `*.marino-site.pages.dev`). Widgets are hostname-locked; a mismatch silently fails verification.
+- **Widget name:** `Chuech site forms`
+- **Hostnames:** add the production site hostname `<domain>` **and** the preview hostnames you test forms on (for example the public-site Pages hostname and its preview wildcard). Widgets are hostname-locked; a mismatch fails verification.
 - **Widget mode:** Managed.
 - Create → copy the **Site Key** (public → `VITE_TURNSTILE_SITE_KEY`, a build variable) and the **Secret Key** (→ `TURNSTILE_SECRET`, a Pages encrypted secret).
 
@@ -209,23 +222,23 @@ This sits *in front of* the app. The app's own honeypot + Turnstile + per-source
 
 ## 10. Pages projects + DNS **[Owner]**
 
-Two projects, both from the same repo (or the two repos, depending on the Phase 2 layout decision — see the inventory §9).
+Two projects in two repos: the public site and `cms2chuech`.
 
-**Site project (`marino-site`):**
-- Workers & Pages → **Create** → **Pages** → **Connect to Git** → pick the site repo.
-- Production branch: `main`.
+**Public-site project (already exists):**
+- Workers & Pages → **Pages** → select the existing site project. Only create a new one if the site has not been connected yet.
+- Production branch: use the site repo's current production branch (confirm it in the project settings).
 - Framework preset: **Vite**. Build command `npm run build`. Output directory `dist`.
-- Root directory: leave as-is for a single-app repo; if the repo becomes the spec's monorepo, set it to the site's app folder.
+- Root directory: the site repo root.
 - Add `SITE_ORIGIN`, `MEDIA_PUBLIC_BASE`, `VITE_TURNSTILE_SITE_KEY` as variables; `TURNSTILE_SECRET`, `IP_HASH_SALT`, `PREVIEW_SECRET` as encrypted secrets (§11).
 
-**CMS project (`marino-cms`):**
-- Workers & Pages → **Create** → **Pages** → **Connect to Git** → same repo.
+**CMS project (`cms2chuech`):**
+- Workers & Pages → **Pages** → select the existing `cms2chuech` project (or connect the repo if rebuilding it).
 - Root directory: leave blank (repo root).
 - Build command: `npm run build`. Output: `admin/dist`. Functions are auto-detected from `functions/` at the repo root.
-- Bindings: `DB` → `marino-cms`, `MEDIA` → `marino-media`, `CACHE` → the CACHE namespace. Preview deployments must use the preview D1/KV/bucket ids.
+- Bindings: `DB` → the shared D1 database, `MEDIA` → the shared R2 bucket, `CACHE` → the shared CACHE namespace. Preview deployments must use preview resources where available.
 - Variables/secrets: §11.
-- **Custom domain:** CMS project → **Custom domains** → **Set up a custom domain** → `cms.<domain>`. Cloudflare adds the CNAME.
-- Attach the Access application from §7 to this hostname (Access usually does this automatically when the hostname matches the application).
+- **Custom domain (optional):** CMS project → **Custom domains** → set up the real admin hostname. Cloudflare adds the CNAME.
+- Attach the Access application from §7 to every admin hostname, including `cms2chuech.pages.dev` until a custom domain replaces it.
 
 **DNS (usually automatic):** `cms.<domain>` → CNAME → the CMS Pages project; `media.<domain>` → CNAME → the R2 custom domain from §4. Both zones' proxies are managed by Cloudflare; do not hand-create duplicates.
 
@@ -235,7 +248,7 @@ Two projects, both from the same repo (or the two repos, depending on the Phase 
 
 ## 11. Variables and secrets (spec §9.2)
 
-Set these in **each project's Pages settings** (Settings → Variables and Secrets), and — once `wrangler.toml` exists as the source of truth for bindings (Phase 2 step 4) — keep names identical to the toml.
+Set these in **each project's Pages settings** (Settings → Variables and Secrets), and keep names identical to those in `admin/wrangler.toml` and the generated root `wrangler.toml`.
 
 | Name | Project | Type | Purpose |
 |---|---|---|---|
@@ -256,12 +269,12 @@ Set these in **each project's Pages settings** (Settings → Variables and Secre
 
 Set a secret from the CLI (it prompts, so the value never appears in shell history or a log):
 ```bash
-npx wrangler pages secret put CF_ACCESS_AUD --project-name marino-cms
-npx wrangler pages secret put TURNSTILE_SECRET --project-name marino-site
+npx wrangler pages secret put CF_ACCESS_AUD --project-name cms2chuech
+npx wrangler pages secret put TURNSTILE_SECRET --project-name <public-site-project>
 ```
 List what exists (names only — values are never readable):
 ```bash
-npx wrangler pages secret list --project-name marino-cms
+npx wrangler pages secret list --project-name cms2chuech
 ```
 
 **Limit:** 25 customer variables per project across preview + production (same name in both counts twice). Inspect before adding; reuse names when rotating.
@@ -270,31 +283,34 @@ npx wrangler pages secret list --project-name marino-cms
 
 ## 12. Optional — Image Transformations **[Owner]**
 
-**Dashboard:** the zone → **Images** → **Transformations** → enable. This allows `/cdn-cgi/image/width=…,format=auto/<url>` on `media.<domain>`, which the site uses to build `srcset` (Phase 10 step 6). Without it, the site falls back to the raw URL — parity does not depend on it.
+**Dashboard:** the zone → **Images** → **Transformations** → enable. This allows `/cdn-cgi/image/width=…,format=auto/<url>` on `media.<domain>`, which the site uses to build `srcset`. Without it, the site falls back to the raw URL — parity does not depend on it.
 
 ---
 
-## 13. Verification checklist (Phase 1 "Done when")
+## 13. Account verification checklist
 
-- [ ] `npx wrangler r2 bucket list` shows the bucket.
-- [ ] `npx wrangler d1 list` shows `marino-cms` and `marino-cms-preview`.
-- [ ] `npx wrangler kv namespace list` shows both CACHE namespaces.
+- [ ] `npx wrangler r2 bucket list` shows the shared bucket.
+- [ ] `npx wrangler d1 list` shows the shared production database and the preview database.
+- [ ] `npx wrangler kv namespace list` shows the CACHE namespaces.
 - [ ] Uploading a test object and fetching it over `https://media.<domain>/…` returns **200** (test object deleted afterwards).
-- [ ] `cms.<domain>` answers (even if only Access's login screen) and is **covered by an Access application**; an unauthenticated visit never reaches the CMS app.
-- [ ] A Turnstile token verifies server-side against the widget's hostname (tested in Phase 6; a hostname mismatch fails here).
+- [ ] `cms2chuech.pages.dev` (or the custom admin hostname) answers with Access's login screen when unauthenticated; the CMS app is never reached directly.
+- [ ] `https://cms2chuech.pages.dev/api/admin/health` returns JSON, not the SPA HTML.
+- [ ] `/api/admin/me` returns the signed-in role and capabilities after Access login.
+- [ ] A Turnstile token verifies server-side against the widget's hostname.
 - [ ] WAF rate-limit rule is live on `/api/forms/*`.
-- [ ] Both Pages projects exist; the CMS project has the D1/R2/KV bindings and the custom domain.
+- [ ] The CMS project has D1/R2/KV bindings and the intended custom domain.
 
-## 14. What to send back to the agent
+## 14. Values still required before the next remote deploy
 
-The agent is blocked on Phase 2 until these arrive:
+The local build, seed and role flows are already complete. Remote deployment is
+blocked until the owner provides or confirms:
 
-1. **Layout decision** (inventory §9, decision A) — where the CMS repo/code lives relative to the site.
-2. `<domain>`; the R2 **bucket name**.
-3. Both **D1 database ids** (prod + preview).
-4. Both **KV namespace ids** (prod + preview).
-5. Access **team domain** and **AUD tag**.
-6. **Turnstile** site key + secret key.
-7. Confirmation that `media.<domain>` serves an object (the §4 check).
-8. Access **editor emails + roles** (who is `admin` / `editor` / `viewer`), and the identity provider.
-9. Whether presigned uploads (videos > 50 MB) are wanted (§5).
+1. The shared R2 **bucket name** and public media origin.
+2. The shared **D1 database ids** (production + preview) and their resource names.
+3. The shared **KV namespace ids** (production + preview).
+4. Production `SITE_ORIGIN`, `CMS_ORIGIN`, Access **team domain** and **AUD tag**.
+5. A valid `wrangler login` session or scoped `CLOUDFLARE_API_TOKEN`.
+6. Confirmation that `/api/admin/health` serves JSON after deploy.
+
+The Cloudflare dashboard login in the browser used for local QA was not
+authenticated, so these values were not read from or written to the account.
