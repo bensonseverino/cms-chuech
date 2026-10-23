@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/plus-jakarta-sans'
 import './index.css'
 import { AppRouter } from './router'
+import { AuthProvider } from './providers/AuthProvider'
+import { ToastProvider } from './providers/ToastProvider'
 
 const container = document.getElementById('root')
 if (!container) {
@@ -11,6 +13,10 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    <AppRouter />
+    <ToastProvider>
+      <AuthProvider>
+        <AppRouter />
+      </AuthProvider>
+    </ToastProvider>
   </StrictMode>,
 )

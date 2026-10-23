@@ -1,14 +1,23 @@
 import { createBrowserRouter, RouterProvider } from 'react-router'
 import AdminShell from './components/AdminShell'
+import Audit from './screens/Audit'
+import Collections from './screens/Collections'
 import Dashboard from './screens/Dashboard'
+import DocumentEditor from './screens/DocumentEditor'
+import EntryEditor from './screens/EntryEditor'
+import Forms from './screens/Forms'
+import Media from './screens/Media'
 import NotFound from './screens/NotFound'
-import Placeholder from './screens/Placeholder'
+import Pages from './screens/Pages'
+import Settings from './screens/Settings'
+import SubmissionDetail from './screens/SubmissionDetail'
+import Submissions from './screens/Submissions'
+import Users from './screens/Users'
 
 /*
- * Admin routes (spec §5.3). Every screen is registered now so navigation and
- * breadcrumbs are stable; the bodies land in Phase 9. Pages/collections keep
- * their detail routes (`/pages/:slug`, `/collections/:name/:id`) so links from
- * the inbox and dashboards have somewhere to go.
+ * Admin routes (spec §5.3). The shell owns navigation and auth; screens own
+ * their data. Detail routes keep a real URL so inbox and dashboard links can
+ * point at the exact record.
  */
 const router = createBrowserRouter([
   {
@@ -16,116 +25,17 @@ const router = createBrowserRouter([
     element: <AdminShell />,
     children: [
       { index: true, element: <Dashboard /> },
-      {
-        path: 'submissions',
-        element: (
-          <Placeholder
-            title="Form inbox"
-            phase="Phase 9"
-            description="Filter by status, form and date; bulk actions; CSV export to match the filters; unread rows bold with a mint dot."
-          />
-        ),
-      },
-      {
-        path: 'submissions/:id',
-        element: (
-          <Placeholder
-            title="Submission detail"
-            phase="Phase 9"
-            description="The right drawer: every stored field, page path, referrer, UTM, status control, internal notes and previous/next."
-          />
-        ),
-      },
-      {
-        path: 'pages',
-        element: (
-          <Placeholder
-            title="Pages"
-            phase="Phase 9"
-            description="Every document — site settings, navigation, footer, Home, Services, Work and each service or generic page — with status chips and a Changed indicator."
-          />
-        ),
-      },
-      {
-        path: 'pages/:slug',
-        element: (
-          <Placeholder
-            title="Document editor"
-            phase="Phase 9"
-            description="Schema-driven groups rendered from the FieldDef catalog, with Save draft, Publish, Revert and Unpublish."
-          />
-        ),
-      },
-      {
-        path: 'collections/:name',
-        element: (
-          <Placeholder
-            title="Collection"
-            phase="Phase 9"
-            description="Projects, services, testimonials, clients and articles as a sortable table with thumbnails and status."
-          />
-        ),
-      },
-      {
-        path: 'collections/:name/:id',
-        element: (
-          <Placeholder
-            title="Entry editor"
-            phase="Phase 9"
-            description="The same schema-driven editor as documents, for one collection entry."
-          />
-        ),
-      },
-      {
-        path: 'media',
-        element: (
-          <Placeholder
-            title="Media library"
-            phase="Phase 9"
-            description="Grid and list, drag-and-drop upload with progress, focus-point picker, video posters and the admin-only import of existing bucket objects."
-          />
-        ),
-      },
-      {
-        path: 'forms',
-        element: (
-          <Placeholder
-            title="Forms"
-            phase="Phase 9"
-            description="Per source: label, enabled, notification emails, success message and submission counts."
-          />
-        ),
-      },
-      {
-        path: 'settings',
-        element: (
-          <Placeholder
-            title="Site settings"
-            phase="Phase 9"
-            description="Company details, the navigation tree editor, the footer block and SEO defaults."
-          />
-        ),
-      },
-      {
-        path: 'users',
-        element: (
-          <Placeholder
-            title="Users"
-            phase="Phase 9"
-            description="Admin only: invite by email, set a role, deactivate. Roles are enforced server-side."
-          />
-        ),
-      },
-      {
-        path: 'audit',
-        element: (
-          <Placeholder
-            title="Activity log"
-            phase="Phase 9"
-            description="Admin only: who changed what, when, with a link to the record."
-          />
-        ),
-      },
+      { path: 'submissions', element: <Submissions /> },
+      { path: 'submissions/:id', element: <SubmissionDetail /> },
+      { path: 'pages', element: <Pages /> },
+      { path: 'pages/:slug', element: <DocumentEditor /> },
+      { path: 'collections/:name', element: <Collections /> },
+      { path: 'collections/:name/:id', element: <EntryEditor /> },
+      { path: 'media', element: <Media /> },
+      { path: 'forms', element: <Forms /> },
+      { path: 'settings', element: <Settings /> },
+      { path: 'users', element: <Users /> },
+      { path: 'audit', element: <Audit /> },
       { path: '*', element: <NotFound /> },
     ],
   },

@@ -1,24 +1,27 @@
 # ---------------------------------------------------------------------------
-# marino-cms — the admin Pages project (spec §9.1).
+# Chuech CMS — the admin Pages project (`cms2chuech`).
 #
-# Binding names are FIXED: DB, MEDIA, CACHE. The site project binds the same
-# database, the same bucket and the same KV namespace, so these names must
-# match `site-integration/wrangler.toml` exactly.
+# Binding names are FIXED: DB, MEDIA, CACHE. The public-site project binds the
+# same database, bucket and KV namespace, so these names must match
+# `site-integration/wrangler.toml` exactly.
 #
-# Every `<...>` placeholder below is filled in from the values the owner
-# supplies in docs/cloudflare-setup.md (Phase 1). Nothing here is a secret —
-# secrets are set with `wrangler pages secret put` (see the same doc).
+# The project name below is real. The `<...>` resource ids and `example.com`
+# origins still need the values already present in the Cloudflare account; the
+# local D1/R2/KV names are retained so `db:migrate:local` keeps working. Nothing
+# here is a secret — set secrets with `wrangler pages secret put`.
 #
-# CAUTION (spec §2 Phase 2 step 4): while a Pages project has bindings/vars in
-# the dashboard, adding this file makes the file the source of truth. Copy any
-# dashboard-only setting into this file before the first deploy.
+# CAUTION: while a Pages project has bindings/vars in the dashboard, deploying
+# with this file makes it the source of truth. Copy every dashboard-only
+# setting into this file before the first successful remote deploy.
 # ---------------------------------------------------------------------------
 
-name = "marino-cms"
+name = "cms2chuech"
 pages_build_output_dir = "dist"
 compatibility_date = "2026-10-01"
 
 # --- D1: structured content, form submissions, media index -------------------
+# TODO(owner): replace the local name and placeholder ids with the shared
+# production/preview databases before deploying.
 [[d1_databases]]
 binding = "DB"
 database_name = "marino-cms"
@@ -28,6 +31,7 @@ preview_database_id = "<preview id from `wrangler d1 create marino-cms-preview`>
 migrations_dir = "../migrations"
 
 # --- R2: the shared media bucket (existing objects untouched) ----------------
+# TODO(owner): replace with the bucket already shared with the public site.
 [[r2_buckets]]
 binding = "MEDIA"
 bucket_name = "marino-media"
@@ -37,6 +41,7 @@ bucket_name = "marino-media"
 preview_bucket_name = "marino-media"
 
 # --- KV: content_version (cache-busting) + form rate-limit counters ----------
+# TODO(owner): replace the placeholder ids with the shared CACHE namespace.
 [[kv_namespaces]]
 binding = "CACHE"
 id = "<prod id from `wrangler kv namespace create CACHE`>"
@@ -44,7 +49,7 @@ preview_id = "<preview id from `wrangler kv namespace create CACHE --preview-nam
 
 # --- Plain variables (public; no secrets here) -------------------------------
 [vars]
-# TODO(owner): set after Phase 1 — see docs/cloudflare-setup.md §4 and §11.
+# TODO(owner): set before the first remote deploy — see docs/cloudflare-setup.md §4 and §11.
 MEDIA_PUBLIC_BASE = "https://media.example.com"
 SITE_ORIGIN = "https://example.com"
 CMS_ORIGIN = "https://cms.example.com"
@@ -52,6 +57,6 @@ CF_ACCESS_TEAM_DOMAIN = "<team>.cloudflareaccess.com"
 BOOTSTRAP_ADMIN_EMAIL = "owner@example.com"
 
 # --- Local development only (.dev.vars, never in Cloudflare) -----------------
-# Create admin/.dev.vars with:
+# Create .dev.vars at the repo root (the directory `npm run dev:cms` runs in):
 #   DEV_USER_EMAIL=you@example.com
 # It is git-ignored and is the ONLY way the admin API bypasses Access.

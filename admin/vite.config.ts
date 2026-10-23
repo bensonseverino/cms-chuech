@@ -6,13 +6,20 @@ import tailwindcss from '@tailwindcss/vite'
  * Admin SPA build. Tailwind v4 via the Vite plugin (same setup as the site),
  * plus the React plugin so Fast Refresh works during UI work.
  *
- * `npm run dev` serves the SPA alone on :5174. That is enough for UI work; the
- * API and bindings need `npm run dev:cms` (wrangler pages dev) from the repo
- * root, which serves the built app and the Functions on :8788 by default.
+ * `npm run dev` serves the SPA on :5174 and proxies `/api` to the local
+ * Functions server from `npm run dev:cms` on :8788. Run both terminals; the
+ * proxy means the SPA and the API share an origin, so cookies (and the local
+ * `DEV_USER_EMAIL` bypass) behave exactly as they do in production.
  */
 export default defineConfig({
   plugins: [tailwindcss(), react()],
   server: {
     port: 5174,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8788',
+        changeOrigin: false,
+      },
+    },
   },
 })

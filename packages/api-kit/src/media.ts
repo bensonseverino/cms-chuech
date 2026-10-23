@@ -77,7 +77,7 @@ async function loadRows(env: Env, ids: readonly string[]): Promise<MediaRow[]> {
 }
 
 /** Depth-first walk collecting every `mediaId` string. */
-function collectMediaIds(value: unknown, found = new Set<string>()): Set<string> {
+export function collectMediaIds(value: unknown, found = new Set<string>()): Set<string> {
   if (Array.isArray(value)) {
     for (const item of value) collectMediaIds(item, found)
     return found

@@ -19,6 +19,8 @@
     "predev:cms": "node scripts/prepare-local-wrangler.mjs",
     "dev:cms": "wrangler pages dev",
     "sync:site": "node --experimental-strip-types scripts/sync-to-site.ts",
+    "seed:chuech": "node scripts/seed-chuech.mjs",
+    "seed:chuech:remote": "node scripts/seed-chuech.mjs --remote",
     "db:migrate:local": "wrangler d1 migrations apply marino-cms --local --config ./admin/wrangler.toml --persist-to .wrangler/state",
     "db:migrate:preview": "wrangler d1 migrations apply marino-cms-preview --remote --config ./admin/wrangler.toml",
     "db:migrate:prod": "wrangler d1 migrations apply marino-cms --remote --config ./admin/wrangler.toml",

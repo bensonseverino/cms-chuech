@@ -15,7 +15,7 @@
  * paths, so a reviewer can diff the two folders and see nothing else changed.
  */
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 
 const REPO_ROOT = resolve(import.meta.dirname, '..')
 const SITE_INTEGRATION = join(REPO_ROOT, 'site-integration')
@@ -29,24 +29,30 @@ if (!existsSync(join(DEST, 'package.json'))) {
 }
 
 const COPIES = [
-  { from: join(SITE_INTEGRATION, 'functions'), to: join(DEST, 'functions') },
-  { from: join(SITE_INTEGRATION, 'public'), to: join(DEST, 'public') },
-  { from: join(SITE_INTEGRATION, 'wrangler.toml'), to: join(DEST, 'wrangler.toml') },
-  { from: join(SITE_INTEGRATION, 'client'), to: join(DEST, 'src', 'cms') },
+  { from: join(SITE_INTEGRATION, 'functions'), to: join(DEST, 'functions'), mirror: true },
+  // `public/` also holds the site's own favicon/icons, so copy only the
+  // drop-in's files instead of replacing the directory.
+  { from: join(SITE_INTEGRATION, 'public'), to: join(DEST, 'public'), mirror: false },
+  { from: join(SITE_INTEGRATION, 'wrangler.toml'), to: join(DEST, 'wrangler.toml'), mirror: false },
+  { from: join(SITE_INTEGRATION, 'client'), to: join(DEST, 'src', 'cms'), mirror: true },
 ]
 
-for (const { from, to } of COPIES) {
+for (const { from, to, mirror } of COPIES) {
   if (!existsSync(from)) {
     console.error(`sync-to-site: missing source ${from}`)
     process.exit(1)
   }
 
-  mkdirSync(to, { recursive: true })
+  const sourceIsDirectory = statSync(from).isDirectory()
+  // Only a directory target is created eagerly; for a file the parent is
+  // created instead (creating the file's own path as a directory made the
+  // wrangler.toml copy fail).
+  mkdirSync(sourceIsDirectory ? to : dirname(to), { recursive: true })
 
-  if (statSync(from).isDirectory()) {
+  if (sourceIsDirectory) {
     // Whole-directory mirror: remove the destination copy first so deletions in
     // site-integration propagate (a copy alone would leave stale files).
-    rmSync(to, { recursive: true, force: true })
+    if (mirror) rmSync(to, { recursive: true, force: true })
     cpSync(from, to, { recursive: true })
   } else {
     cpSync(from, to)

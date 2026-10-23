@@ -10,6 +10,7 @@ import {
   Settings,
   Users,
 } from 'lucide-react'
+import type { Capabilities } from './api/types'
 
 /*
  * One source of truth for the admin navigation (spec §5.3). The shell renders
@@ -22,6 +23,8 @@ export type NavItem = {
   icon: LucideIcon
   /** Exact-match the path instead of prefix-match. */
   end?: boolean
+  /** Hide the item unless the current role has this capability. */
+  capability?: keyof Capabilities
 }
 
 export type NavSection = {
@@ -50,16 +53,25 @@ export const NAV: NavSection[] = [
     heading: 'Settings',
     items: [
       { label: 'Media', to: '/media', icon: ImageIcon },
-      { label: 'Forms', to: '/forms', icon: FormInput },
-      { label: 'Site settings', to: '/settings', icon: Settings },
-      { label: 'Users', to: '/users', icon: Users },
-      { label: 'Activity', to: '/audit', icon: History },
+      { label: 'Forms', to: '/forms', icon: FormInput, capability: 'manageForms' },
+      { label: 'Site settings', to: '/settings', icon: Settings, capability: 'manageSettings' },
+      { label: 'Users', to: '/users', icon: Users, capability: 'manageUsers' },
+      { label: 'Activity', to: '/audit', icon: History, capability: 'viewAudit' },
     ],
   },
 ]
 
 /** Flat list of nav items, used for title lookup. */
 export const NAV_ITEMS: NavItem[] = NAV.flatMap((section) => section.items)
+
+/** Role-filtered nav. Empty sections (usually only Settings) are dropped. */
+export function navFor(capabilities: Capabilities | undefined): NavSection[] {
+  if (!capabilities) return NAV
+  return NAV.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => !item.capability || capabilities[item.capability]),
+  })).filter((section) => section.items.length > 0)
+}
 
 /**
  * Human title for the current path — the top bar shows it (spec §5.1). Matches

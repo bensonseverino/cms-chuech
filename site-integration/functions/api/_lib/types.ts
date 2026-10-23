@@ -34,6 +34,18 @@ export interface D1Database {
   batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]>
 }
 
+// --- R2 ---------------------------------------------------------------------
+
+export interface R2ObjectBody {
+  body: ReadableStream
+  httpEtag?: string
+  httpMetadata?: { contentType?: string }
+}
+
+export interface R2Bucket {
+  get(key: string): Promise<R2ObjectBody | null>
+}
+
 // --- KV ---------------------------------------------------------------------
 
 export interface KVNamespace {
@@ -46,7 +58,8 @@ export interface KVNamespace {
 
 export interface Env {
   DB: D1Database
-  MEDIA: unknown // bound but unused by the public reads; declared for symmetry
+  /** The shared media bucket. Read by functions/media/[[path]].ts. */
+  MEDIA: R2Bucket
   CACHE: KVNamespace
 
   MEDIA_PUBLIC_BASE: string
