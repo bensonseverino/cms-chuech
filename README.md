@@ -11,8 +11,8 @@ decision A in [`docs/cms-inventory.md`](docs/cms-inventory.md#9-decisions-needed
 ## Layout
 
 ```
+functions/              Pages Functions for the admin project (Access-protected; _middleware lands in Phase 7)
 admin/                  Pages project: marino-cms  (React + TS + Tailwind v4 SPA)
-  functions/api/admin/  the admin API (Access-protected; _middleware lands in Phase 7)
   src/components/       AdminShell — black sidebar, mint active state
   src/screens/          dashboard + routed screens (bodies land in Phase 9)
   src/styles/tokens.css the design tokens, copied verbatim from the spec
@@ -28,6 +28,8 @@ docs/
 ```
 
 ## Commands
+
+Requires Node.js 22.22.0 or newer (`.nvmrc` pins it for the Cloudflare Pages build).
 
 ```bash
 npm install
@@ -53,8 +55,12 @@ npx wrangler pages secret put <NAME> --project-name marino-cms
 npx wrangler r2 object put marino-media/<key> --file <path>   # seed uploads
 ```
 
-`npm run db:migrate:*` point at `admin/wrangler.toml`, which owns the bindings
-for both projects. The site repo gets its own copy from `site-integration/`.
+`dev:cms` generates a git-ignored `wrangler.toml` at the repo root from
+`admin/wrangler.toml`, because Wrangler only discovers a Pages config in the
+directory it runs from and always serves `./functions`. Edit the file in
+`admin/`, not the generated one. `db:migrate:*` point at `admin/wrangler.toml`,
+which owns the bindings for both projects. The site repo gets its own copy from
+`site-integration/`.
 
 ## Status
 
@@ -89,7 +95,8 @@ block publishing Home and Work (see below).
    `site-integration/`. Phase 6 must ship inside the site project.
 2. **The admin app directory is `admin/`, not `cms/`.** The repo root is already
    named `cms`, so `cms/cms/` would be the alternative. The Pages project name
-   is still `marino-cms` and the spec's root-directory setting becomes `admin`.
+   is still `marino-cms`; it builds from the repo root (output `admin/dist`) and
+   Functions live in `functions/` at the root.
 3. **`platform` bindings are declared in `packages/api-kit/src/types.ts`**
    instead of importing `@cloudflare/workers-types`, whose generated types
    reshuffle between majors.

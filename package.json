@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Marino CMS: admin site, shared schema/API packages and the site-side integration (Cloudflare Pages + D1 + R2 + KV).",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.22.0"
   },
   "workspaces": [
     "admin",
@@ -16,12 +16,13 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "dev:admin": "npm run dev --workspace @marino/admin",
-    "dev:cms": "npm run pages:dev --workspace @marino/admin",
+    "predev:cms": "node scripts/prepare-local-wrangler.mjs",
+    "dev:cms": "wrangler pages dev",
     "sync:site": "node --experimental-strip-types scripts/sync-to-site.ts",
-    "db:migrate:local": "wrangler d1 migrations apply marino-cms --local --config ./admin/wrangler.toml",
+    "db:migrate:local": "wrangler d1 migrations apply marino-cms --local --config ./admin/wrangler.toml --persist-to .wrangler/state",
     "db:migrate:preview": "wrangler d1 migrations apply marino-cms-preview --remote --config ./admin/wrangler.toml",
     "db:migrate:prod": "wrangler d1 migrations apply marino-cms --remote --config ./admin/wrangler.toml",
-    "db:migrations:list": "wrangler d1 migrations list marino-cms --local --config ./admin/wrangler.toml",
+    "db:migrations:list": "wrangler d1 migrations list marino-cms --local --config ./admin/wrangler.toml --persist-to .wrangler/state",
     "db:time-travel": "wrangler d1 time-travel info marino-cms"
   },
   "devDependencies": {

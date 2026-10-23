@@ -6,6 +6,9 @@ dist
 dist-ssr
 *.tsbuildinfo
 
+# Local Pages dev config generated from admin/wrangler.toml
+/wrangler.toml
+
 # Local Cloudflare state (D1/R2/KV persistence for `wrangler pages dev`)
 .wrangler
 

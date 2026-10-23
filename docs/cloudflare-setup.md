@@ -220,8 +220,8 @@ Two projects, both from the same repo (or the two repos, depending on the Phase 
 
 **CMS project (`marino-cms`):**
 - Workers & Pages → **Create** → **Pages** → **Connect to Git** → same repo.
-- Root directory: `cms` (per the spec).
-- Build command: `npm run build`. Output: `dist`. Functions are auto-detected from `cms/functions`.
+- Root directory: leave blank (repo root).
+- Build command: `npm run build`. Output: `admin/dist`. Functions are auto-detected from `functions/` at the repo root.
 - Bindings: `DB` → `marino-cms`, `MEDIA` → `marino-media`, `CACHE` → the CACHE namespace. Preview deployments must use the preview D1/KV/bucket ids.
 - Variables/secrets: §11.
 - **Custom domain:** CMS project → **Custom domains** → **Set up a custom domain** → `cms.<domain>`. Cloudflare adds the CNAME.

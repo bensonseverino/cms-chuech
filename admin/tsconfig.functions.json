@@ -8,5 +8,5 @@
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true
   },
-  "include": ["functions", "../packages/api-kit/src", "../packages/content-schema/src"]
+  "include": ["../functions", "../packages/api-kit/src", "../packages/content-schema/src"]
 }

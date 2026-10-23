@@ -3,14 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Marino CMS admin SPA + Pages Functions API (Cloudflare Pages project: marino-cms).",
+  "description": "Marino CMS admin SPA (Cloudflare Pages project: marino-cms).",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
-    "lint": "eslint .",
-    "pages:dev": "wrangler pages dev"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
