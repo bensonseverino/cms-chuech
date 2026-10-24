@@ -39,7 +39,12 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const sessionUser = await sessionUserFrom(request, env)
   if (sessionUser) {
     context.data.user = sessionUser.user
-    return context.data.user ? withAdminHeaders(await context.next()) : forbidden()
+    // Keep running the CSRF/origin checks below so mutations are still gated,
+    // but skip the Access JWT/DEV_USER_EMAIL bootstrap so the session path can
+    // be used standalone (e.g. on preview hostnames without Access policies).
+    const csrf = checkMutationRequest(request, env)
+    if (csrf) return withAdminHeaders(csrf)
+    return withAdminHeaders(await context.next())
   }
 
   const auth = await getUser(request, env)
@@ -52,15 +57,6 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
   context.data.user = auth.user
   return withAdminHeaders(await context.next())
-}
-
-function forbidden(): Response {
-  return new Response(
-    JSON.stringify({
-      error: { code: 'unauthorized', message: 'Cloudflare Access did not identify you' },
-    }),
-    { status: 401, headers: { 'Content-Type': 'application/json; charset=utf-8' } },
-  )
 }
 
 function checkMutationRequest(request: Request, env: Env): Response | null {

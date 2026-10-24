@@ -43,7 +43,7 @@ const id = ulid()
 
 const scripts =[
   {
-    sql: `SELECT id FROM users WHERE email COLLATE NOCASE = ${sqlString(adminEmail)};`,
+    sql: `SELECT id, password_hash, password_salt FROM users WHERE email COLLATE NOCASE = ${sqlString(adminEmail)};`,
     json: true,
   },
 ]
@@ -51,24 +51,31 @@ const scripts =[
 const outputs = scripts.map((script) => runWrangler(script))
 const existing = JSON.parse(outputs[0])?.[0]?.results?.[0]
 
-if (existing) {
-  console.log(`Admin account ${redact(adminEmail)} already exists. No changes made.`)
-  process.exit(0)
+if (existing && existing.password_hash && existing.password_salt) {
+  const candidateHash = pbkdf2Sync(adminPassword, existing.password_salt, PBKDF2_ITERATIONS, 32, 'sha256').toString('hex')
+  if (candidateHash === existing.password_hash) {
+    console.log(`Admin account ${redact(adminEmail)} already exists with the current password. No changes made.`)
+    process.exit(0)
+  }
+  console.log(`Admin account ${redact(adminEmail)} exists but password differs — updating hash.`)
 }
 
-const insert = `
-INSERT INTO users (
-  id, email, role, password_hash, password_salt, active
-) VALUES (
-  ${sqlString(id)},
+const upsert = `
+INSERT INTO users (id, email, role, password_hash, password_salt, active)
+VALUES (
+  ${existing?.id ? sqlString(existing.id) : sqlString(id)},
   ${sqlString(adminEmail)},
   'admin',
   ${sqlString(passwordHash)},
   ${sqlString(salt)},
   1
-);
+)
+ON CONFLICT(id) DO UPDATE SET
+  password_hash = excluded.password_hash,
+  password_salt = excluded.password_salt,
+  active = 1;
 `
-runWrangler({ sql: insert })
+runWrangler({ sql: upsert })
 console.log(`Seeded admin account ${redact(adminEmail)}.`)
 process.exit(0)
 
