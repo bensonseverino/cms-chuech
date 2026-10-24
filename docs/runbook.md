@@ -217,13 +217,20 @@ Branding, Web Design and SEO. PPC and Video remain services entries.
 ### Before deploying
 
 1. `npm run typecheck && npm test && npm run build`.
-2. Confirm `admin/wrangler.toml` contains the **real** D1 ids/names, R2 bucket,
-   KV ids, production origins and Access team domain. The project name is
-   already `cms2chuech`; resource ids and origin variables still need the values
-   from the Cloudflare account.
-3. `npx wrangler login` or export a scoped `CLOUDFLARE_API_TOKEN`.
+2. `npx wrangler login` or export a scoped `CLOUDFLARE_API_TOKEN`, then run
+   `npm run cf:wire -- --discover` (or pass `--d1/--d1-preview/--kv/--kv-preview`
+   directly). It writes the D1, KV and R2 ids into **both** `admin/wrangler.toml`
+   and `site-integration/wrangler.toml`, regenerates the local root config, and
+   exits non-zero if any `<...>` placeholder survives. A placeholder
+   `database_id` binds no database at all, so every login 500s at
+   `env.DB.prepare(...)`.
+3. Confirm the production origins (`SITE_ORIGIN`, `CMS_ORIGIN`,
+   `MEDIA_PUBLIC_BASE`, `CF_ACCESS_TEAM_DOMAIN`) are real values, not
+   `example.com`. `cf:wire` fills them when the same variables are exported.
 4. Apply migrations before deploying code that expects them:
-   `npm run db:migrate:prod`.
+   `npm run db:migrate:prod`, then seed the owner login against the remote
+   database: `npm run db:seed-admin:remote` (reads `ADMIN_EMAIL` /
+   `ADMIN_PASSWORD`; it refuses to run while the config is unwired).
 
 ### Deploy
 
@@ -239,6 +246,17 @@ the deploy summary does not list a Functions bundle, stop and fix the project’
 root/build configuration before treating the release as complete.
 
 ### Verify
+
+```bash
+npm run smoke:login -- --url https://cms2chuech.pages.dev
+```
+
+It signs in with the seeded owner account and asserts login 200, the
+`cms_session` cookie, `/api/admin/me` 200 with the user and capabilities, and
+`/api/admin/health` 200 — the same sequence the SPA runs on boot. Add
+`--expect-failure` to confirm a wrong password is rejected with 401.
+
+The individual requests are still useful when something fails:
 
 ```bash
 curl -sS https://cms2chuech.pages.dev/api/admin/health

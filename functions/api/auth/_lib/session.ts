@@ -27,7 +27,7 @@ export async function sessionUserFrom(
             u.active, u.password_changed_at
        FROM sessions s
        INNER JOIN users u ON u.id = s.user_id
-      WHERE s.token_hash = @@
+      WHERE s.token_hash = ?
         AND s.revoked_at IS NULL
         AND datetime(s.expires_at) > datetime('now')`,
   )

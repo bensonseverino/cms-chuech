@@ -45,10 +45,20 @@ npm test                       # 54 schema/grammar/seed-gate tests
 npm run build                  # production build (admin output: admin/dist)
 
 # remote operations (require real Cloudflare ids and `wrangler login`)
-npm run seed:chuech:remote
+npm run cf:wire -- --discover           # write real D1/KV/R2 ids into both wrangler.toml files
 npm run db:migrate:preview
 npm run db:migrate:prod
+npm run seed:chuech:remote
+npm run db:seed-admin:remote            # create/refresh the owner login in remote D1
+npm run smoke:login -- --url https://cms2chuech.pages.dev
 ```
+
+`cf:wire` accepts either a scoped token (`CLOUDFLARE_API_TOKEN`, optional
+`CLOUDFLARE_ACCOUNT_ID`) to look the resources up by name, or pasted ids:
+`--d1 <id> --d1-preview <id> --kv <id> --kv-preview <id>`. It fails if a
+placeholder is left behind, because an unwired `database_id` is what makes
+login return 500 in production. `smoke:login` then runs the real
+login → `/api/admin/me` → `/api/admin/health` sequence the SPA performs.
 
 `dev:cms` generates a git-ignored root `wrangler.toml` from
 `admin/wrangler.toml`; always edit the config in `admin/`. The Vite dev server
@@ -66,6 +76,12 @@ DEV_USER_EMAIL=owner@example.com
 The bypass only applies when `DEV_USER_EMAIL` is set **and** the request
 hostname is loopback. An unknown email is rejected unless the `users` table is
 empty and the address matches `BOOTSTRAP_ADMIN_EMAIL`.
+
+Password sessions (`cms_session`) are the other path in: `ADMIN_EMAIL` and
+`ADMIN_PASSWORD` seed the owner account (`npm run db:seed-admin`) and, with
+`AUTO_LOGIN=true`, let `/login` sign in on load. A password session is checked
+before Access, so the admin API works on hostnames without an Access policy;
+mutations still require the `X-Requested-With` and `Origin` headers.
 
 ## Roles
 

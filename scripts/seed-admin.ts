@@ -37,6 +37,10 @@ const persistArgs = remote
   ? []
   : ['--local', '--persist-to', join(root, '.wrangler', 'state')]
 
+// A remote seed against placeholder ids would hit a D1 database that does not
+// exist and fail with a confusing wrangler error. Say what is actually wrong.
+if (remote) assertConfigIsWired()
+
 const salt = randomBytes(16).toString('hex')
 const passwordHash = pbkdf2Sync(adminPassword, salt, PBKDF2_ITERATIONS, 32, 'sha256').toString('hex')
 const id = ulid()
@@ -105,6 +109,20 @@ function runWrangler(script: { sql: string; json?: boolean }): string {
 
 function sqlString(value: string): string {
   return `'${value.replace(/'/g, "''")}'`
+}
+
+/** Fails fast when admin/wrangler.toml still has `<...>` resource ids. */
+function assertConfigIsWired(): void {
+  const config = join(root, 'admin', 'wrangler.toml')
+  if (!existsSync(config)) return
+  const placeholders = readFileSync(config, 'utf8')
+    .split(/\r?\n/)
+    .filter((line) => /^\s*(database_id|preview_database_id|id|preview_id)\s*=/.test(line) && line.includes('<'))
+  if (!placeholders.length) return
+  console.error('admin/wrangler.toml still has placeholder Cloudflare ids:')
+  for (const line of placeholders) console.error(`  ${line.trim()}`)
+  console.error('Run `npm run cf:wire -- --discover` (or pass the ids) before a remote seed.')
+  process.exit(1)
 }
 
 function redact(email: string): string {

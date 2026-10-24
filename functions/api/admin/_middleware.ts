@@ -39,11 +39,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const sessionUser = await sessionUserFrom(request, env)
   if (sessionUser) {
     context.data.user = sessionUser.user
-    // Keep running the CSRF/origin checks below so mutations are still gated,
-    // but skip the Access JWT/DEV_USER_EMAIL bootstrap so the session path can
-    // be used standalone (e.g. on preview hostnames without Access policies).
-    const csrf = checkMutationRequest(request, env)
-    if (csrf) return withAdminHeaders(csrf)
+    // Keep running the CSRF/origin checks so mutations are still gated, but
+    // only for mutations: a read must never require the CSRF header, or the
+    // SPA's plain GETs (e.g. /api/admin/me) would 403. Skipping the Access
+    // JWT/DEV_USER_EMAIL bootstrap lets the session path work standalone
+    // (e.g. on preview hostnames without Access policies).
+    if (MUTATING.has(request.method)) {
+      const csrf = checkMutationRequest(request, env)
+      if (csrf) return withAdminHeaders(csrf)
+    }
     return withAdminHeaders(await context.next())
   }
 
