@@ -23,6 +23,7 @@ export type MeResponse = {
   user: User
   capabilities: Capabilities
   siteOrigin: string
+  passwordChanged?: boolean
 }
 
 export type FieldError = {

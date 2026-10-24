@@ -1,0 +1,24 @@
+
+ ⛅️ wrangler 4.149.0
+────────────────────
+Resource location: local 
+
+Use --remote if you want to access the remote instance.
+
+🌀 Executing on local database DB (<preview id from `wrangler d1 create marino-cms-preview`>) from .wrangler\state\v3\d1:
+🌀 To execute on your remote database, add a --remote flag to your wrangler command.
+🚣 1 command executed successfully.
+[
+  {
+    "results": [
+      {
+        "password_hash": "6d8f24bde37ec59ee590c4bdd0f0e2c8bf468017f302ff1b4886b2ea2ae3868e",
+        "password_salt": "2fcf9afbc74cc4f4e82afdeec0f0c1be"
+      }
+    ],
+    "success": true,
+    "meta": {
+      "duration": 3
+    }
+  }
+]

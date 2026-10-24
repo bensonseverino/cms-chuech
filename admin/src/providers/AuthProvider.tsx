@@ -4,9 +4,9 @@ import { useApi } from '../hooks/useApi'
 import type { MeResponse } from '../api/types'
 
 /*
- * `/me` is fetched once for the shell and shared by every screen. It carries
- * both identity and the capability flags, so a button is hidden for the same
- * reason the API would reject it rather than a second, drifting role check.
+ * `/api/auth/me` is the one auth check the SPA uses. It sees password sessions
+ * and can be safely called before the admin shell is up; `/api/admin/me` is
+ * still the identity endpoint behind a deployed route.
  */
 
 export type AuthState = {
@@ -19,7 +19,7 @@ export type AuthState = {
 const AuthContext = createContext<AuthState | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { data, loading, error, reload } = useApi<MeResponse>('/me')
+  const { data, loading, error, reload } = useApi<MeResponse>('/api/auth/me')
   const value = useMemo<AuthState>(
     () => ({ me: data, loading, error, reload }),
     [data, error, loading, reload],

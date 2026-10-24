@@ -20,6 +20,7 @@ export type AuditAction =
   | 'upload'
   | 'import'
   | 'login'
+  | 'logout'
   | 'status'
   | 'bulk'
   | 'purge'

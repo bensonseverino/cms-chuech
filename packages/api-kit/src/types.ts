@@ -129,12 +129,21 @@ export interface Env {
   CMS_ORIGIN?: string
 
   // --- CMS-only variables --------------------------------------------------
-  /** Access team domain, e.g. `team.cloudflareaccess.com`. */
+  /** Owner-only bootstrap email, also used by /api/auth/dev-auto-login. */
+  BOOTSTRAP_ADMIN_EMAIL?: string
+  /** Cloudflare Access, optional now that the CMS also supports password sessions. */
   CF_ACCESS_TEAM_DOMAIN?: string
   /** Access application AUD tag (a secret, but read as a string here). */
   CF_ACCESS_AUD?: string
-  /** The first admin's email; seeds the `users` table when it is empty. */
-  BOOTSTRAP_ADMIN_EMAIL?: string
+
+  /** Credentials used by `npm run db:seed-admin`; production values are secrets. */
+  ADMIN_EMAIL?: string
+  /** Owner password, read only in the auth endpoints/seed script. */
+  ADMIN_PASSWORD?: string
+  /** `development`/`production`, used only to gate dev-only code. */
+  ENV?: string
+  /** Local-only auto-login toggled by one endpoint; must never be set here. */
+  AUTO_LOGIN?: string
 
   // --- Optional / local-only ----------------------------------------------
   /** HMAC key for preview tokens (secret). */

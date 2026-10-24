@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { Loader2, Menu, ShieldAlert, X } from 'lucide-react'
 import type { Capabilities, User } from '../api/types'
+import { api } from '../api/client'
 import { navFor, titleForPath, type NavSection } from '../nav'
 import { useAuth } from '../providers/AuthProvider'
 import { Button } from './ui'
@@ -19,11 +20,17 @@ import { initials } from '../lib/format'
  * security.
  */
 export default function AdminShell() {
+  const navigate = useNavigate()
   const { pathname } = useLocation()
   const { me, loading, error, reload } = useAuth()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    const status = (error as { status?: number } | null)?.status
+    if (status === 401) navigate('/login', { replace: true })
+  }, [error, navigate])
 
   // Close the drawer on navigation and return focus to the menu button.
   useEffect(() => {
@@ -175,7 +182,7 @@ export default function AdminShell() {
               pathname={pathname}
               onNavigate={() => setDrawerOpen(false)}
             />
-            <UserCard user={me.user} onNavigate={() => setDrawerOpen(false)} />
+            <UserCard user={me.user} />
           </nav>
         </div>
       )}
@@ -259,13 +266,7 @@ function SidebarNav({
   )
 }
 
-function UserCard({
-  user,
-  onNavigate,
-}: {
-  user: User
-  onNavigate?: () => void
-}) {
+function UserCard({ user }: { user: User }) {
   return (
     <div className="mt-5 border-t border-white/10 pt-4">
       <div className="flex items-center gap-3">
@@ -281,13 +282,17 @@ function UserCard({
           </span>
         </span>
       </div>
-      <a
-        href="/cdn-cgi/access/logout"
-        onClick={onNavigate}
-        className="mt-3 flex h-9 items-center justify-center rounded-button border border-white/15 text-[11px] font-medium text-white/65 transition-colors hover:bg-white/10 hover:text-white"
+      <button
+        type="button"
+        onClick={async (event) => {
+          event.preventDefault()
+          await api.post('/api/auth/logout')
+          window.location.replace('/login')
+        }}
+        className="mt-3 w-full flex h-9 items-center justify-center rounded-button border border-white/15 text-[11px] font-medium text-white/65 transition-colors hover:bg-white/10 hover:text-white"
       >
         Sign out
-      </a>
+      </button>
     </div>
   )
 }

@@ -25,6 +25,7 @@
     "db:migrate:preview": "wrangler d1 migrations apply marino-cms-preview --remote --config ./admin/wrangler.toml",
     "db:migrate:prod": "wrangler d1 migrations apply marino-cms --remote --config ./admin/wrangler.toml",
     "db:migrations:list": "wrangler d1 migrations list marino-cms --local --config ./admin/wrangler.toml --persist-to .wrangler/state",
+    "db:seed-admin": "node --experimental-strip-types scripts/seed-admin.ts",
     "db:time-travel": "wrangler d1 time-travel info marino-cms"
   },
   "devDependencies": {

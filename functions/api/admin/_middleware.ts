@@ -5,6 +5,7 @@ import {
   type Env,
   type PagesFunction,
 } from '@marino/api-kit'
+import { sessionUserFrom } from '../auth/_lib/session'
 
 /*
  * The admin gate.
@@ -33,6 +34,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     return withAdminHeaders(await context.next())
   }
 
+  // Password sessions have first class. If present, they establish identity
+  // before Cloudflare Access does and possibly *without* Access at all.
+  const sessionUser = await sessionUserFrom(request, env)
+  if (sessionUser) {
+    context.data.user = sessionUser.user
+    return context.data.user ? withAdminHeaders(await context.next()) : forbidden()
+  }
+
   const auth = await getUser(request, env)
   if (!auth.ok) return withAdminHeaders(auth.response)
 
@@ -43,6 +52,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
   context.data.user = auth.user
   return withAdminHeaders(await context.next())
+}
+
+function forbidden(): Response {
+  return new Response(
+    JSON.stringify({
+      error: { code: 'unauthorized', message: 'Cloudflare Access did not identify you' },
+    }),
+    { status: 401, headers: { 'Content-Type': 'application/json; charset=utf-8' } },
+  )
 }
 
 function checkMutationRequest(request: Request, env: Env): Response | null {

@@ -6,6 +6,7 @@ import Dashboard from './screens/Dashboard'
 import DocumentEditor from './screens/DocumentEditor'
 import EntryEditor from './screens/EntryEditor'
 import Forms from './screens/Forms'
+import Login from './screens/Login'
 import Media from './screens/Media'
 import NotFound from './screens/NotFound'
 import Pages from './screens/Pages'
@@ -20,6 +21,7 @@ import Users from './screens/Users'
  * point at the exact record.
  */
 const router = createBrowserRouter([
+  { path: '/login', element: <Login /> },
   {
     path: '/',
     element: <AdminShell />,

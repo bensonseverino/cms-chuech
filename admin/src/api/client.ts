@@ -42,7 +42,8 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     body = JSON.stringify(options.body)
   }
 
-  const response = await fetch(`/api/admin${path}`, {
+  const url = path.startsWith('/api/') ? path : `/api/admin${path}`
+  const response = await fetch(url, {
     ...options,
     method,
     headers,
