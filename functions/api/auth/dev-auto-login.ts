@@ -21,7 +21,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     hostname = ''
   }
 
-  const isDev = env.ENV === 'development' || env.DEV_USER_EMAIL
+  const isDev = env.ENV === 'development'
   const originAllowed = isLoopback(
     request.headers.get('Origin') ?? `http://${hostname}`,
   )

@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Shared server helpers for both Pages Functions bundles: responses, validation hand-off, media resolution, content versioning, edge cache, audit and Access auth.",
+  "description": "Shared server helpers for both Pages Functions bundles: responses, validation hand-off, media resolution, content versioning, edge cache, audit and roles.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -12,8 +12,7 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
-    "@marino/content-schema": "*",
-    "jose": "^6.2.12"
+    "@marino/content-schema": "*"
   },
   "devDependencies": {
     "typescript": "~6.0.2"

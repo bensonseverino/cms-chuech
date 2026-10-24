@@ -194,7 +194,7 @@ Also missing from the repo but required by the spec: `_site` (company/SEO/social
 | # | Decision | Options |
 |---|---|---|
 | A | **Where the CMS lives** | (1) Turn the site repo `website/my-project` into the spec's monorepo (`functions/`, `cms/`, `packages/`, `migrations/`, `scripts/`) and build everything there — cleanest for Phase 6, but edits the live site repo. (2) Build the CMS app + shared packages in *this* `cms/` workspace and have the site repo consume the shared packages — keeps the site repo untouched but needs a workspace link/sync. (3) Merge the two folders into one new monorepo. |
-| B | **Cloudflare account specifics** | Domain (`<domain>`, `cms.<domain>`, `media.<domain>`), R2 bucket name, Cloudflare Access team domain + AUD tag, Turnstile site/secret keys, identity provider, editor emails/roles. |
+| B | **Cloudflare account specifics** | Domain (`<domain>`, `cms.<domain>`, `media.<domain>`), R2 bucket name, owner `ADMIN_EMAIL` / `ADMIN_PASSWORD`, Turnstile site/secret keys, editor emails/roles. |
 | C | **Presigned uploads** | Needed only for videos > 50 MB (`aws4fetch` + R2 S3 keys + bucket CORS). Otherwise skip. |
 | D | **Notification email** | Send via Resend (`RESEND_API_KEY` + `NOTIFY_FROM`) or leave the dashboard badge only. |
 | E | **Retention / consent** | 24-month purge default, and whether a consent line is added to site forms (the one visual change to the site). |
@@ -206,5 +206,5 @@ Also missing from the repo but required by the spec: `_site` (company/SEO/social
 
 1. Owner reviews §7 conflicts and answers §9 decision A (layout) + B (Cloudflare specifics).
 2. Agent delivers `docs/cloudflare-setup.md` — exact owner steps and verification commands (written; see that file).
-3. Owner executes the Cloudflare steps and supplies D1/KV ids, Access team domain + AUD, Turnstile keys, `media.<domain>`.
+3. Owner executes the Cloudflare steps and supplies D1/KV ids, the owner login, Turnstile keys, `media.<domain>`.
 4. Agent proceeds to Phase 2 (repo structure + CMS project) once decision A is made.

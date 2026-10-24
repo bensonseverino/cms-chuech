@@ -5,8 +5,8 @@ import { run } from './_lib/http'
 /*
  * GET /api/admin/me — who the API thinks you are, and what you may do.
  *
- * The SPA uses this on boot. A 401/403 here means Access let the request
- * through but the email has no active `users` row (or is deactivated).
+ * The SPA uses this on boot. A 401 means there is no valid `cms_session`
+ * cookie; a 403 means the session belongs to a deactivated user.
  */
 
 export const onRequestGet: PagesFunction<Env> = (context) =>

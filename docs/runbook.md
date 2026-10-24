@@ -63,9 +63,15 @@ migration silently diverges local, preview and production.
 Secrets are per Pages project and cannot be read back.
 
 ```bash
-npx wrangler pages secret put CF_ACCESS_AUD --project-name cms2chuech
+npx wrangler pages secret put ADMIN_PASSWORD --project-name cms2chuech
 npx wrangler pages secret list --project-name cms2chuech   # names only
 ```
+
+`ADMIN_PASSWORD` is the only credential the admin hostname has (there is no
+Cloudflare Access check any more). Rotating it needs two steps: update the
+secret, then re-seed so D1 holds the new hash —
+`npm run db:seed-admin:remote`. Session cookies issued before the rotation stay
+valid until they expire; delete the `sessions` rows to cut them off immediately.
 
 Redeploy after changing a secret. `PREVIEW_SECRET` rotation invalidates
 outstanding preview links. `IP_HASH_SALT` rotation makes old submission hashes
@@ -116,17 +122,15 @@ project's `services[]` values, and those values must be existing service titles.
 
 Both steps are required:
 
-1. **Cloudflare Access → the Chuech CMS application → Policies** — add the
-   person's email or identity-provider group. This lets them reach the admin
-   hostname.
-2. **CMS → Users → Invite user** — choose `viewer`, `editor` or `admin`. This is
+1. **CMS → Users → Invite user** — choose `viewer`, `editor` or `admin`. This is
    the role the API checks on every request.
+2. Give that person a password: the invite creates the `users` row, and the
+   owner sets/resets the password from the same screen (or seeds the owner with
+   `npm run db:seed-admin:remote`).
 
-Being in Access with no active `users` row is a 403 by design. Deactivating the
-CMS row takes effect on the next request without changing Access.
-
-`BOOTSTRAP_ADMIN_EMAIL` creates the first admin only while the `users` table is
-empty; it is not a backdoor afterwards.
+Reaching the admin hostname is not enough — a request with no valid
+`cms_session` is a 401 and an inactive `users` row is a 403 by design.
+Deactivating the CMS row takes effect on the next request.
 
 Role boundary:
 
@@ -155,11 +159,16 @@ npm run dev:admin          # Vite SPA, proxies /api to :8788
 Local auth uses `.dev.vars` at the repo root:
 
 ```dotenv
-DEV_USER_EMAIL=owner@example.com
+ENV=development
+ADMIN_EMAIL=owner@example.com
+ADMIN_PASSWORD=...
+AUTO_LOGIN=true      # optional
 ```
 
-The bypass requires both that variable and a loopback hostname. Unknown emails
-are rejected. Never set `DEV_USER_EMAIL` in Cloudflare.
+`npm run db:seed-admin` writes the matching password hash into local D1. The
+development allowances (`/api/auth/dev-auto-login`, the loopback Origin
+mismatch for mutations) require `ENV=development` **and** a loopback hostname;
+neither is active on a real hostname.
 
 Health check:
 
@@ -225,8 +234,8 @@ Branding, Web Design and SEO. PPC and Video remain services entries.
    `database_id` binds no database at all, so every login 500s at
    `env.DB.prepare(...)`.
 3. Confirm the production origins (`SITE_ORIGIN`, `CMS_ORIGIN`,
-   `MEDIA_PUBLIC_BASE`, `CF_ACCESS_TEAM_DOMAIN`) are real values, not
-   `example.com`. `cf:wire` fills them when the same variables are exported.
+   `MEDIA_PUBLIC_BASE`) are real values, not `example.com`. `cf:wire` fills them
+   when the same variables are exported.
 4. Apply migrations before deploying code that expects them:
    `npm run db:migrate:prod`, then seed the owner login against the remote
    database: `npm run db:seed-admin:remote` (reads `ADMIN_EMAIL` /
@@ -279,8 +288,8 @@ deploy does not deploy the public site.
 - The production project exists at `https://cms2chuech.pages.dev`, but
   `/api/admin/health` currently returns SPA HTML, so the Functions route is not
   verified.
-- Production D1/R2/KV bindings, Access team/AUD and the real media origin remain
-  unconfirmed.
+- Production D1/R2/KV bindings, the owner `ADMIN_PASSWORD` secret and the real
+  media origin remain unconfirmed.
 - Cloudflare auth in this environment is expired and the refresh token is
   invalid; run `npx wrangler login` interactively before remote work.
 

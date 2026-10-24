@@ -129,16 +129,14 @@ export interface Env {
   CMS_ORIGIN?: string
 
   // --- CMS-only variables --------------------------------------------------
-  /** Owner-only bootstrap email, also used by /api/auth/dev-auto-login. */
-  BOOTSTRAP_ADMIN_EMAIL?: string
-  /** Cloudflare Access, optional now that the CMS also supports password sessions. */
-  CF_ACCESS_TEAM_DOMAIN?: string
-  /** Access application AUD tag (a secret, but read as a string here). */
-  CF_ACCESS_AUD?: string
-
-  /** Credentials used by `npm run db:seed-admin`; production values are secrets. */
+  /**
+   * Owner credentials. `npm run db:seed-admin` hashes these into the `users`
+   * row, and `/api/auth/login` checks a submitted password against that hash.
+   * There is no other identity source: no Cloudflare Access JWT, no header
+   * trust. Production values live in Cloudflare secrets, never in the repo.
+   */
   ADMIN_EMAIL?: string
-  /** Owner password, read only in the auth endpoints/seed script. */
+  /** Owner password, read only in the seed script. */
   ADMIN_PASSWORD?: string
   /** `development`/`production`, used only to gate dev-only code. */
   ENV?: string
@@ -152,8 +150,6 @@ export interface Env {
   TURNSTILE_SECRET?: string
   /** Salt for IP hashing (secret). */
   IP_HASH_SALT?: string
-  /** Local dev only — never set in Cloudflare. */
-  DEV_USER_EMAIL?: string
   /** Local dev only — bypasses Turnstile verification. */
   TURNSTILE_BYPASS?: string
 }

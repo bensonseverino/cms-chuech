@@ -24,7 +24,7 @@
  *      KV_NAMESPACE_ID, KV_PREVIEW_ID, R2_BUCKET_NAME.
  *
  * Optional public origins can be filled the same run: SITE_ORIGIN,
- * CMS_ORIGIN, MEDIA_PUBLIC_BASE, CF_ACCESS_TEAM_DOMAIN.
+ * CMS_ORIGIN, MEDIA_PUBLIC_BASE.
  *
  * Ids are not secrets, but they identify your account's resources, so this
  * script only ever prints a short prefix of each one.
@@ -64,7 +64,6 @@ const origins = {
   SITE_ORIGIN: process.env.SITE_ORIGIN,
   CMS_ORIGIN: process.env.CMS_ORIGIN,
   MEDIA_PUBLIC_BASE: process.env.MEDIA_PUBLIC_BASE,
-  CF_ACCESS_TEAM_DOMAIN: process.env.CF_ACCESS_TEAM_DOMAIN,
 }
 
 const ids = { ...requested }

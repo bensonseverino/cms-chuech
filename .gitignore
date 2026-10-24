@@ -12,7 +12,7 @@ dist-ssr
 # Local Cloudflare state (D1/R2/KV persistence for `wrangler pages dev`)
 .wrangler
 
-# Local secrets — never commit (DEV_USER_EMAIL, TURNSTILE_BYPASS, etc.)
+# Local secrets — never commit (ADMIN_PASSWORD, TURNSTILE_BYPASS, etc.)
 .dev.vars
 .dev.vars.*
 

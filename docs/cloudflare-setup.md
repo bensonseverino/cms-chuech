@@ -32,7 +32,7 @@
 2. Have the account id handy (`npx wrangler whoami` prints it) — needed for the R2 S3 credentials in §2's optional step and for the S3 credentials table.
 3. Zone present in the same account with DNS control for `<domain>`.
 
-> **Placeholders used throughout:** `<domain>`, `<team>` (Access team), and the bucket name. Decide these before starting (see the decisions list at the end of the inventory). Suggested bucket name: `marino-media`.
+> **Placeholders used throughout:** `<domain>` and the bucket name. Decide these before starting (see the decisions list at the end of the inventory). Suggested bucket name: `marino-media`.
 
 ---
 
@@ -163,28 +163,28 @@ Note: response-header *Transform Rules* each own their header, so this rule adds
 
 ---
 
-## 7. Cloudflare Access — protect `cms.<domain>` **[Owner]**
+## 7. Admin authentication — password only **[Owner]**
 
-**Dashboard:** Zero Trust → **Access** → **Applications** → **Add an application** → **Self-hosted**.
+Cloudflare Access is **not** used. The CMS API verifies no JWT and trusts no
+identity header; the only way in is a password login against the owner's
+`users` row:
 
-1. **Application name:** `Chuech CMS`
-2. **Session duration:** `24 hours`
-3. **Public hostname:** `cms.<domain>` → path (leave blank).
-4. **Add a second public hostname** for Pages previews: `*.cms2chuech.pages.dev` (or the specific preview hostnames), otherwise previews are wide open. Add `cms2chuech.pages.dev` too unless a custom domain covers it.
-5. **Access policies** → **Add a policy**:
-   - Name: `Team`
-   - Action: **Allow**
-   - Include → **Emails** → list the team's editor emails, **or** Include → your identity provider group.
-6. **Identity provider:** configure under Zero Trust → Settings → Authentication → Login methods (One-time PIN needs no setup; Google/Microsoft need OAuth credentials).
-7. **Save.**
+1. Set the password: `npx wrangler pages secret put ADMIN_PASSWORD --project-name cms2chuech`.
+2. Seed the hash into D1: `ADMIN_EMAIL=… npm run db:seed-admin:remote`.
+3. Sign in at `/login`. The `cms_session` cookie is what every `/api/admin/*`
+   request is checked against.
 
-Then collect two values from the application:
-- **Team domain:** Zero Trust → Settings → Custom Pages / or the dashboard URL — it looks like `<team>.cloudflareaccess.com`. The JWT issuer is `https://<team>.cloudflareaccess.com`.
-- **Application Audience (AUD) tag:** open the application → **Overview** → scroll to **Application Audience (AUD) Tag** → copy. This becomes the `CF_ACCESS_AUD` secret.
+Consequences to be explicit about:
 
-The CMS API verifies `Cf-Access-Jwt-Assertion` (RS256, via `jose`) against `https://<team>.cloudflareaccess.com/cdn-cgi/access/certs`, checking `aud` = the AUD tag and `iss`. Access is the *front door*; the API re-checks every request regardless (spec §7).
+- Nothing sits in front of the admin hostname, so treat `ADMIN_PASSWORD` as a
+  production secret: long, unique, and rotated by re-running the seed.
+- Preview and production deployments share the same login form; a preview URL
+  is reachable by anyone who knows it, so it is only as private as the password.
+- Additional people are added on the CMS Users screen, never in Zero Trust.
 
-**Return to the agent:** `<team>` team domain and the AUD tag.
+If you still have Access applications pointed at the CMS hostname, delete them —
+the app no longer reads `Cf-Access-Jwt-Assertion`, and a stale Access policy
+only adds a second login screen in front of the real one.
 
 ---
 
@@ -238,11 +238,11 @@ Two projects in two repos: the public site and `cms2chuech`.
 - Bindings: `DB` → the shared D1 database, `MEDIA` → the shared R2 bucket, `CACHE` → the shared CACHE namespace. Preview deployments must use preview resources where available.
 - Variables/secrets: §11.
 - **Custom domain (optional):** CMS project → **Custom domains** → set up the real admin hostname. Cloudflare adds the CNAME.
-- Attach the Access application from §7 to every admin hostname, including `cms2chuech.pages.dev` until a custom domain replaces it.
+- No Access application is attached: every admin hostname, including `cms2chuech.pages.dev`, is protected by the password login only (§7).
 
 **DNS (usually automatic):** `cms.<domain>` → CNAME → the CMS Pages project; `media.<domain>` → CNAME → the R2 custom domain from §4. Both zones' proxies are managed by Cloudflare; do not hand-create duplicates.
 
-> **Order matters for Access.** Create the Pages project and its custom domain *before* finalising the Access application, so the exact hostname exists. Access will not protect a hostname that has never served.
+> **No Access application is needed.** The admin is protected by the password login described in §7, so there is no Zero Trust ordering constraint and no hostname that must exist before a policy is written.
 
 ---
 
@@ -255,9 +255,8 @@ Set these in **each project's Pages settings** (Settings → Variables and Secre
 | `MEDIA_PUBLIC_BASE` | both | variable | `https://media.<domain>` |
 | `SITE_ORIGIN` | both | variable | `https://<domain>` (Origin checks, preview links) |
 | `CMS_ORIGIN` | cms | variable | `https://cms.<domain>` |
-| `CF_ACCESS_TEAM_DOMAIN` | cms | variable | `<team>.cloudflareaccess.com` |
-| `CF_ACCESS_AUD` | cms | **secret** | Access application AUD tag |
-| `BOOTSTRAP_ADMIN_EMAIL` | cms | variable | first admin (seeds the `users` row) |
+| `ADMIN_EMAIL` | cms | variable | owner login (used by `db:seed-admin:remote`) |
+| `ADMIN_PASSWORD` | cms | **secret** | owner password hash source; the only credential the admin has |
 | `PREVIEW_SECRET` | both | **secret** | HMAC for preview tokens |
 | `TURNSTILE_SECRET` | site | **secret** | server verification |
 | `VITE_TURNSTILE_SITE_KEY` | site | build variable | widget key (public — safe to expose) |
@@ -265,11 +264,11 @@ Set these in **each project's Pages settings** (Settings → Variables and Secre
 | `RESEND_API_KEY`, `NOTIFY_FROM` | site | **secret** / variable | optional notification email |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | cms | **secret** | only if presigned uploads are built |
 
-`DEV_USER_EMAIL` and `TURNSTILE_BYPASS` go in local `.dev.vars` **only** — never in Cloudflare.
+`ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ENV=development` and `TURNSTILE_BYPASS` go in local `.dev.vars` **only** — never in Cloudflare.
 
 Set a secret from the CLI (it prompts, so the value never appears in shell history or a log):
 ```bash
-npx wrangler pages secret put CF_ACCESS_AUD --project-name cms2chuech
+npx wrangler pages secret put ADMIN_PASSWORD --project-name cms2chuech
 npx wrangler pages secret put TURNSTILE_SECRET --project-name <public-site-project>
 ```
 List what exists (names only — values are never readable):
@@ -293,9 +292,9 @@ npx wrangler pages secret list --project-name cms2chuech
 - [ ] `npx wrangler d1 list` shows the shared production database and the preview database.
 - [ ] `npx wrangler kv namespace list` shows the CACHE namespaces.
 - [ ] Uploading a test object and fetching it over `https://media.<domain>/…` returns **200** (test object deleted afterwards).
-- [ ] `cms2chuech.pages.dev` (or the custom admin hostname) answers with Access's login screen when unauthenticated; the CMS app is never reached directly.
 - [ ] `https://cms2chuech.pages.dev/api/admin/health` returns JSON, not the SPA HTML.
-- [ ] `/api/admin/me` returns the signed-in role and capabilities after Access login.
+- [ ] A signed-out `GET /api/admin/me` returns a JSON 401 (not an HTML page).
+- [ ] `npm run smoke:login -- --url https://cms2chuech.pages.dev` passes: login 200, `/api/admin/me` 200 with the owner's role and capabilities.
 - [ ] A Turnstile token verifies server-side against the widget's hostname.
 - [ ] WAF rate-limit rule is live on `/api/forms/*`.
 - [ ] The CMS project has D1/R2/KV bindings and the intended custom domain.
@@ -308,7 +307,7 @@ blocked until the owner provides or confirms:
 1. The shared R2 **bucket name** and public media origin.
 2. The shared **D1 database ids** (production + preview) and their resource names.
 3. The shared **KV namespace ids** (production + preview).
-4. Production `SITE_ORIGIN`, `CMS_ORIGIN`, Access **team domain** and **AUD tag**.
+4. Production `SITE_ORIGIN`, `CMS_ORIGIN` and the owner `ADMIN_PASSWORD` secret.
 5. A valid `wrangler login` session or scoped `CLOUDFLARE_API_TOKEN`.
 6. Confirmation that `/api/admin/health` serves JSON after deploy.
 

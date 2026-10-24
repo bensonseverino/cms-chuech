@@ -8,8 +8,8 @@ import tailwindcss from '@tailwindcss/vite'
  *
  * `npm run dev` serves the SPA on :5174 and proxies `/api` to the local
  * Functions server from `npm run dev:cms` on :8788. Run both terminals; the
- * proxy means the SPA and the API share an origin, so cookies (and the local
- * `DEV_USER_EMAIL` bypass) behave exactly as they do in production.
+ * proxy means the SPA and the API share an origin, so the `cms_session` cookie
+ * behaves exactly as it does in production.
  */
 export default defineConfig({
   plugins: [tailwindcss(), react()],

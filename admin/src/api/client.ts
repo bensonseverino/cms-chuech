@@ -66,7 +66,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
         fields = parsed.error.fields ?? []
       }
     } catch {
-      // A non-JSON error (Pages 404, Access HTML) keeps the generic message.
+      // A non-JSON error (Pages 404, a proxy's HTML error page) keeps the generic message.
     }
 
     throw new ApiError(response.status, code, message, fields)
@@ -82,7 +82,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       response.status,
       'invalid_response',
       looksLikeHtml
-        ? 'The admin API returned HTML instead of JSON. Cloudflare Access may be intercepting the request, or the Pages Functions are not deployed.'
+        ? 'The admin API returned HTML instead of JSON. The Pages Functions may not be deployed, or the request hit a proxy error page.'
         : 'The admin API returned an unexpected non-JSON response.',
     )
   }
@@ -146,7 +146,7 @@ export function uploadMedia(
             xhr.status,
             'invalid_response',
             looksLikeHtml
-              ? 'The admin API returned HTML instead of JSON. Cloudflare Access may be intercepting the request, or the Pages Functions are not deployed.'
+              ? 'The admin API returned HTML instead of JSON. The Pages Functions may not be deployed, or the request hit a proxy error page.'
               : 'The admin API returned an unexpected non-JSON response.',
           ),
         )

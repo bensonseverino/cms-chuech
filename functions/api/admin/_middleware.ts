@@ -1,7 +1,6 @@
 import {
   ADMIN_HEADERS,
   error,
-  getUser,
   type Env,
   type PagesFunction,
 } from '@marino/api-kit'
@@ -10,14 +9,14 @@ import { sessionUserFrom } from '../auth/_lib/session'
 /*
  * The admin gate.
  *
- * Cloudflare Access is the front door, but the API proves the caller on every
- * request as well. This middleware is the only place that turns a request into
- * a `context.data.user`; every endpoint below it can therefore assume an
- * identified, active user and only has to decide whether their role is enough.
+ * One identity source: the `cms_session` cookie from POST /api/auth/login. A
+ * request with no valid session for an active user is rejected here, so every
+ * endpoint below this middleware can assume an identified user and only has to
+ * decide whether their role is enough.
  *
  * `/api/admin/health` is deliberately exempt from the identity lookup: it is
  * the endpoint used when auth or bindings are themselves broken, and it leaks
- * no data. Access still protects the hostname.
+ * no data.
  */
 
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
@@ -34,32 +33,19 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     return withAdminHeaders(await context.next())
   }
 
-  // Password sessions have first class. If present, they establish identity
-  // before Cloudflare Access does and possibly *without* Access at all.
   const sessionUser = await sessionUserFrom(request, env)
-  if (sessionUser) {
-    context.data.user = sessionUser.user
-    // Keep running the CSRF/origin checks so mutations are still gated, but
-    // only for mutations: a read must never require the CSRF header, or the
-    // SPA's plain GETs (e.g. /api/admin/me) would 403. Skipping the Access
-    // JWT/DEV_USER_EMAIL bootstrap lets the session path work standalone
-    // (e.g. on preview hostnames without Access policies).
-    if (MUTATING.has(request.method)) {
-      const csrf = checkMutationRequest(request, env)
-      if (csrf) return withAdminHeaders(csrf)
-    }
-    return withAdminHeaders(await context.next())
+  if (!sessionUser) {
+    return withAdminHeaders(error('unauthorized', 'Sign in to continue'))
   }
+  context.data.user = sessionUser.user
 
-  const auth = await getUser(request, env)
-  if (!auth.ok) return withAdminHeaders(auth.response)
-
+  // Guard mutations only: a read must never require the CSRF header, or the
+  // SPA's plain GETs (e.g. /api/admin/me) would 403.
   if (MUTATING.has(request.method)) {
     const csrf = checkMutationRequest(request, env)
     if (csrf) return withAdminHeaders(csrf)
   }
 
-  context.data.user = auth.user
   return withAdminHeaders(await context.next())
 }
 
@@ -85,9 +71,15 @@ function checkMutationRequest(request: Request, env: Env): Response | null {
   if (candidates.some((candidate) => normalise(candidate) === normalisedOrigin)) return null
 
   // Vite's dev proxy keeps the browser Origin (:5174) while the Function is
-  // served on :8788. The dev bypass is confined to loopback; production never
-  // reaches this branch.
-  if (env.DEV_USER_EMAIL && isLoopback(requestOrigin) && isLoopback(origin)) return null
+  // served on :8788. The dev allowance is confined to loopback hosts and to
+  // ENV=development; production never reaches this branch.
+  if (
+    env.ENV === 'development' &&
+    isLoopback(requestOrigin) &&
+    isLoopback(origin)
+  ) {
+    return null
+  }
 
   return error('forbidden', 'Origin does not match the CMS origin')
 }

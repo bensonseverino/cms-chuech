@@ -14,10 +14,10 @@ remain in the site repo and are not rebuilt here.
 ## Layout
 
 ```text
-functions/api/admin/       Access-protected admin Pages Functions
+functions/api/admin/       Session-protected admin Pages Functions
 admin/                     React + TypeScript + Tailwind v4 SPA
 packages/content-schema/   Zod schemas, FieldDef catalog, rich-inline grammar
-packages/api-kit/          Responses, validation, media, cache, audit, Access auth
+packages/api-kit/          Responses, validation, media, cache, audit, roles
 migrations/                Shared D1 schema and form-source seeds
 scripts/                   Local setup + idempotent Chuech content seed
 site-integration/          Drop-in bindings/routes for the public site
@@ -64,24 +64,31 @@ login → `/api/admin/me` → `/api/admin/health` sequence the SPA performs.
 `admin/wrangler.toml`; always edit the config in `admin/`. The Vite dev server
 proxies `/api` to `http://127.0.0.1:8788`.
 
-## Local authentication
+## Authentication
 
-Cloudflare Access protects the deployed hostname. Local development uses
-`.dev.vars` at the repo root, which is git-ignored:
+One identity source: the fixed owner credentials. `npm run db:seed-admin`
+hashes `ADMIN_EMAIL` / `ADMIN_PASSWORD` into the owner's `users` row, and
+`POST /api/auth/login` checks a submitted password against that hash and issues
+the `cms_session` cookie. Every `/api/admin/*` request re-checks that session
+against D1; there is no Cloudflare Access JWT verification and no trusted
+header path.
+
+Local development reads `.dev.vars` at the repo root, which is git-ignored:
 
 ```dotenv
-DEV_USER_EMAIL=owner@example.com
+ENV=development
+ADMIN_EMAIL=owner@example.com
+ADMIN_PASSWORD=...
+AUTO_LOGIN=true      # optional: /login signs in on load
 ```
 
-The bypass only applies when `DEV_USER_EMAIL` is set **and** the request
-hostname is loopback. An unknown email is rejected unless the `users` table is
-empty and the address matches `BOOTSTRAP_ADMIN_EMAIL`.
+`ENV=development` unlocks two loopback-only allowances: `/api/auth/dev-auto-login`
+and the Vite-proxy Origin mismatch (`:5174` → `:8788`) for mutations. Both are
+inert on a real hostname.
 
-Password sessions (`cms_session`) are the other path in: `ADMIN_EMAIL` and
-`ADMIN_PASSWORD` seed the owner account (`npm run db:seed-admin`) and, with
-`AUTO_LOGIN=true`, let `/login` sign in on load. A password session is checked
-before Access, so the admin API works on hostnames without an Access policy;
-mutations still require the `X-Requested-With` and `Origin` headers.
+Because the password is the only door, keep it long and unique, set it as a
+Cloudflare secret (`wrangler pages secret put ADMIN_PASSWORD`) and rotate it by
+re-running `npm run db:seed-admin:remote`.
 
 ## Roles
 
@@ -128,8 +135,8 @@ SVG wordmarks preserving all nine names.
 The production Pages project exists at
 `https://cms2chuech.pages.dev`, but the deployed Functions route has not yet
 been verified: `/api/admin/health` currently returns the SPA fallback rather
-than JSON. The account also needs confirmation of the D1, R2 and KV bindings,
-Access team/AUD values and the production origins.
+than JSON. The account also needs confirmation of the D1, R2 and KV bindings and the
+production origins, plus the owner `ADMIN_PASSWORD` secret.
 
 `admin/wrangler.toml` names the Pages project `cms2chuech`; its resource ids,
 resource names and origin variables still need the values already present in

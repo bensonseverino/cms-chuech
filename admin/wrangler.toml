@@ -53,10 +53,21 @@ preview_id = "<preview id from `wrangler kv namespace create CACHE --preview-nam
 MEDIA_PUBLIC_BASE = "https://media.example.com"
 SITE_ORIGIN = "https://example.com"
 CMS_ORIGIN = "https://cms.example.com"
-CF_ACCESS_TEAM_DOMAIN = "<team>.cloudflareaccess.com"
-BOOTSTRAP_ADMIN_EMAIL = "hello@chuechstudio.co.ke"
 
+# --- Authentication ----------------------------------------------------------
+# The admin API has ONE identity source: the `cms_session` cookie issued by
+# POST /api/auth/login. That endpoint checks the submitted password against the
+# PBKDF2 hash on the owner's `users` row, which `npm run db:seed-admin` writes
+# from ADMIN_EMAIL / ADMIN_PASSWORD.
+#
+# There is no Cloudflare Access verification, so this hostname relies on that
+# password alone: keep ADMIN_PASSWORD long and unique, set it as a secret
+# (`wrangler pages secret put ADMIN_PASSWORD`), and never commit it.
+#
 # --- Local development only (.dev.vars, never in Cloudflare) -----------------
 # Create .dev.vars at the repo root (the directory `npm run dev:cms` runs in):
-#   DEV_USER_EMAIL=you@example.com
-# It is git-ignored and is the ONLY way the admin API bypasses Access.
+#   ADMIN_EMAIL=you@example.com
+#   ADMIN_PASSWORD=...
+#   ENV=development      (enables the loopback-only dev allowances)
+#   AUTO_LOGIN=true      (optional: /login signs in on load)
+# It is git-ignored.

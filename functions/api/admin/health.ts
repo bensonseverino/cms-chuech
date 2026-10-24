@@ -7,9 +7,9 @@ import { ADMIN_HEADERS, json, type Env, type PagesFunction } from '@marino/api-k
  * This is the one admin route that does NOT sit behind the auth middleware's
  * identity lookup reaching into the database: it is the endpoint you call when
  * something is misconfigured, so it reports per-binding status rather than
- * failing as a whole. It still requires whatever Access rule protects
- * `cms.<domain>`, and it never reveals configuration values — only the shape of
- * `MEDIA_PUBLIC_BASE` is echoed, which is public anyway.
+ * failing as a whole. It requires no login on purpose, so it stays useful while
+ * auth itself is broken; it never reveals configuration values — only the
+ * shape of `MEDIA_PUBLIC_BASE` is echoed, which is public anyway.
  */
 
 type Probe = { ok: boolean; detail: string }
