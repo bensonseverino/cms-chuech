@@ -25,8 +25,8 @@ compatibility_date = "2026-10-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "marino-cms"
-database_id = "<prod id from `wrangler d1 create marino-cms`>"
-preview_database_id = "<preview id from `wrangler d1 create marino-cms-preview`>"
+database_id = "dd6ca990-ad83-4665-a88b-efb7480c6aa4"
+preview_database_id = "8fb9ed3c-470f-4ac8-bfa1-42abccb21765"
 # Migrations live once, at the repo root, and are shared with the site project.
 migrations_dir = "../migrations"
 
@@ -44,15 +44,15 @@ preview_bucket_name = "marino-media"
 # TODO(owner): replace the placeholder ids with the shared CACHE namespace.
 [[kv_namespaces]]
 binding = "CACHE"
-id = "<prod id from `wrangler kv namespace create CACHE`>"
-preview_id = "<preview id from `wrangler kv namespace create CACHE --preview-name ...`>"
+id = "ab557d09fa75405d9e747bd53676d3d5"
+preview_id = "486bba6292bb4c7e91bc32779937b711"
 
 # --- Plain variables (public; no secrets here) -------------------------------
 [vars]
 # TODO(owner): set before the first remote deploy — see docs/cloudflare-setup.md §4 and §11.
-MEDIA_PUBLIC_BASE = "https://media.example.com"
-SITE_ORIGIN = "https://example.com"
-CMS_ORIGIN = "https://cms.example.com"
+MEDIA_PUBLIC_BASE = "https://chuechstudio.co.ke/media"
+SITE_ORIGIN = "https://chuechstudio.co.ke"
+CMS_ORIGIN = "https://cms2chuech.pages.dev"
 
 # --- Authentication ----------------------------------------------------------
 # The admin API has ONE identity source: the `cms_session` cookie issued by

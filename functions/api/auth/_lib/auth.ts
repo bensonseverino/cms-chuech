@@ -32,7 +32,15 @@ export type LoginAttempt = { ok: true; user: PasswordUser; cookie: string } | {
 
 const SESSION_COOKIE = 'cms_session'
 const SESSION_TTL_DAYS = 30
-const PBKDF2_ITERATIONS = 210_000
+/*
+ * Workers refuse PBKDF2 above 100,000 iterations —
+ * `NotSupportedError: Pbkdf2 failed: iteration counts above 100000 are not
+ * supported`. Exceeding the cap threw inside deriveBits, which verify() read as
+ * "wrong password", so every login failed while local workerd (which allows
+ * more) passed. Keep this at or below 100_000 and in step with
+ * scripts/seed-admin.ts.
+ */
+const PBKDF2_ITERATIONS = 100_000
 
 /** Audit log helper; audit never fails the caller. */
 function logAudit(

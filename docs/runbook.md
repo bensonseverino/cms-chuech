@@ -285,13 +285,26 @@ deploy does not deploy the public site.
 ### Current deployment state
 
 - Local admin API, SPA, seed and role flows are verified.
-- The production project exists at `https://cms2chuech.pages.dev`, but
-  `/api/admin/health` currently returns SPA HTML, so the Functions route is not
-  verified.
-- Production D1/R2/KV bindings, the owner `ADMIN_PASSWORD` secret and the real
-  media origin remain unconfirmed.
-- Cloudflare auth in this environment is expired and the refresh token is
-  invalid; run `npx wrangler login` interactively before remote work.
+- `https://cms2chuech.pages.dev` was verified on 2026-10-24: `/api/admin/health`
+  returns JSON with D1, R2 and KV all reachable; password login returns 200 with
+  a `cms_session` cookie; `/api/admin/me` returns the admin user and 9
+  capabilities; a wrong password returns 401; and a mutation without
+  `X-Requested-With` returns 403.
+- Provisioned resources: D1 `marino-cms` (prod) and `marino-cms-preview` (the
+  `preview_database_id` of the `DB` binding, not a separately named database),
+  KV `CACHE` + `CACHE_preview`, and R2 `marino-media`. Their ids are wired into
+  `admin/wrangler.toml` and `site-integration/wrangler.toml`.
+- The Pages project carries those bindings and the variables `CMS_ORIGIN`,
+  `SITE_ORIGIN` and `MEDIA_PUBLIC_BASE` in both the production and preview
+  deployment configs, plus the `ADMIN_PASSWORD` secret.
+- `MEDIA_PUBLIC_BASE` is set to `https://chuechstudio.co.ke/media`; confirm that
+  this is where the public site actually serves `/media` before relying on
+  image URLs in the admin.
+- `cms2chuech` is Git-connected: a push to `master` builds and deploys on its
+  own. `wrangler pages deploy` is only needed to ship a bundle that is not on
+  `master` yet, or to pick up bindings without waiting for a build.
+- Cloudflare auth expires periodically; run `npx wrangler login` interactively
+  before remote work.
 
 ---
 

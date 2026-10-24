@@ -16,7 +16,10 @@ import { pbkdf2Sync } from 'node:crypto'
 const root = process.cwd()
 const nodeBins = join(root, 'node_modules', 'wrangler', 'bin', 'wrangler.js')
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const PBKDF2_ITERATIONS = 210_000
+// Must match PBKDF2_ITERATIONS in functions/api/auth/_lib/auth.ts. Workers
+// reject PBKDF2 above 100,000 iterations, so a higher value here produces a
+// hash the deployed API can never verify.
+const PBKDF2_ITERATIONS = 100_000
 
 loadDotEnv()
 
@@ -33,8 +36,11 @@ if (!adminPassword) {
 }
 
 const remote = process.argv.includes('--remote')
+// `wrangler d1 execute` defaults to the LOCAL database, so --remote has to be
+// passed explicitly; omitting it silently seeded .wrangler/state while the
+// operator believed production had been seeded.
 const persistArgs = remote
-  ? []
+  ? ['--remote']
   : ['--local', '--persist-to', join(root, '.wrangler', 'state')]
 
 // A remote seed against placeholder ids would hit a D1 database that does not

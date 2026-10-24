@@ -181,6 +181,11 @@ Consequences to be explicit about:
 - Preview and production deployments share the same login form; a preview URL
   is reachable by anyone who knows it, so it is only as private as the password.
 - Additional people are added on the CMS Users screen, never in Zero Trust.
+- Password hashes are PBKDF2-SHA256 at 100,000 iterations. Workers reject counts
+  above 100,000, so keep `PBKDF2_ITERATIONS` in step between
+  `functions/api/auth/_lib/auth.ts` and `scripts/seed-admin.ts`, and re-run the
+  seed after changing either — a mismatch makes every login fail with
+  "Incorrect email or password".
 
 If you still have Access applications pointed at the CMS hostname, delete them —
 the app no longer reads `Cf-Access-Jwt-Assertion`, and a stale Access policy
