@@ -11,6 +11,23 @@ export * from './primitives'
 export * from './fields'
 export * from './shape'
 export * from './rich-inline'
+export * from './rich-text'
+export {
+  DEFAULT_VIDEO_HOSTS,
+  PROJECT_INPUT_KEYS,
+  PROJECT_LIMITS,
+  emptyProject,
+  focalPosition,
+  imageRefSchema,
+  isPublishable,
+  projectCategorySlug,
+  projectPublishChecklist,
+  projectPublishErrors,
+  projectSchema,
+  slugify,
+  videoUrlError,
+} from './projects'
+export type { ImageRef, ProjectInput, PublishChecklistItem } from './projects'
 export * from './validate'
 export * from './documents'
 export * from './entries'

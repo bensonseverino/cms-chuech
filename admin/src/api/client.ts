@@ -124,10 +124,52 @@ export function uploadMedia(
   files: File[],
   onProgress: (percent: number) => void,
 ): Promise<{ items: import('./types').MediaView[] }> {
-  return new Promise((resolve, reject) => {
-    const form = new FormData()
-    for (const file of files) form.append('file', file)
+  const form = new FormData()
+  for (const file of files) form.append('file', file)
+  return postForm(form, onProgress)
+}
 
+/**
+ * Upload one project image with its pre-generated WebP variants. The server
+ * stores each rendition under `cms/projects/{mediaId}/{width}.webp`.
+ */
+export async function uploadProjectImage(
+  file: File,
+  onProgress: (percent: number) => void,
+  alt?: string,
+): Promise<import('./types').MediaView> {
+  const { prepareProjectImage } = await import('../lib/images')
+  const prepared = await prepareProjectImage(file)
+
+  if (!prepared) {
+    const { items } = await uploadMedia([file], onProgress)
+    if (!items[0]) throw new ApiError(0, 'server_error', 'The upload returned no file')
+    return items[0]
+  }
+
+  const form = new FormData()
+  for (const variant of prepared.variants) {
+    form.append(
+      'variant',
+      new File([variant.blob], `${variant.width}.webp`, { type: 'image/webp' }),
+    )
+  }
+  form.append('variantWidths', JSON.stringify(prepared.variants.map((variant) => variant.width)))
+  form.append('width', String(prepared.width))
+  form.append('height', String(prepared.height))
+  form.append('filename', file.name)
+  if (alt) form.append('alt', alt)
+
+  const { items } = await postForm(form, onProgress)
+  if (!items[0]) throw new ApiError(0, 'server_error', 'The upload returned no file')
+  return items[0]
+}
+
+function postForm(
+  form: FormData,
+  onProgress: (percent: number) => void,
+): Promise<{ items: import('./types').MediaView[] }> {
+  return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', '/api/admin/media')
     xhr.withCredentials = true

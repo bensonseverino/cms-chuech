@@ -8,16 +8,16 @@ import {
   type PagesFunction,
 } from '@marino/api-kit'
 import { videoUrlError } from '@marino/content-schema'
-import { actorOf, currentUser } from '../_lib/db'
-import { run } from '../_lib/http'
-import { mediaMapFor } from '../_lib/media'
+import { actorOf, currentUser } from '../../_lib/db'
+import { run } from '../../_lib/http'
+import { mediaMapFor } from '../../_lib/media'
 import {
   allowedVideoHosts,
   loadProjectView,
   publishBlockers,
   rowToInput,
   categorySlugsByProject,
-} from '../_lib/projects'
+} from '../../_lib/projects'
 
 /*
  * POST /api/admin/projects/:id/publish

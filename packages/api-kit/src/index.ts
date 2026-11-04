@@ -14,6 +14,8 @@ export * from './media'
 export * from './cache'
 export * from './audit'
 export * from './auth'
+export * from './projects'
+export * from './preview'
 
 /*
  * The RichInline grammar, re-exported (spec §4.5 "richInline helpers (shared

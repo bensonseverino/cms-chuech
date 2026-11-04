@@ -10,6 +10,9 @@ import Login from './screens/Login'
 import Media from './screens/Media'
 import NotFound from './screens/NotFound'
 import Pages from './screens/Pages'
+import ProjectCategories from './screens/ProjectCategories'
+import ProjectEditor from './screens/ProjectEditor'
+import Projects from './screens/Projects'
 import Settings from './screens/Settings'
 import SubmissionDetail from './screens/SubmissionDetail'
 import Submissions from './screens/Submissions'
@@ -31,6 +34,10 @@ const router = createBrowserRouter([
       { path: 'submissions/:id', element: <SubmissionDetail /> },
       { path: 'pages', element: <Pages /> },
       { path: 'pages/:slug', element: <DocumentEditor /> },
+      { path: 'projects', element: <Projects /> },
+      { path: 'projects/categories', element: <ProjectCategories /> },
+      { path: 'projects/new', element: <ProjectEditor /> },
+      { path: 'projects/:id', element: <ProjectEditor /> },
       { path: 'collections/:name', element: <Collections /> },
       { path: 'collections/:name/:id', element: <EntryEditor /> },
       { path: 'media', element: <Media /> },

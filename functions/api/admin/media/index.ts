@@ -10,6 +10,7 @@ import {
 } from '@marino/api-kit'
 import { actorOf, currentUser } from '../_lib/db'
 import { mediaView, type MediaRow } from '../_lib/media'
+import { uploadProjectImage } from '../_lib/project-media'
 import { pageParams, run } from '../_lib/http'
 
 /*
@@ -22,7 +23,7 @@ import { pageParams, run } from '../_lib/http'
  */
 
 const MEDIA_COLUMNS =
-  'id, r2_key, kind, mime, size, width, height, duration, filename, alt, focus_x, focus_y, poster_media_id, tags, source, deleted_at, created_at'
+  'id, r2_key, kind, mime, size, width, height, duration, filename, alt, focus_x, focus_y, poster_media_id, tags, source, deleted_at, created_at, variants'
 
 const KINDS = new Set(['image', 'video', 'svg', 'file'])
 const SOURCES = new Set(['upload', 'import', 'seed'])
@@ -120,6 +121,22 @@ export const onRequestPost: PagesFunction<Env> = (context) =>
       form = await context.request.formData()
     } catch {
       return error('bad_request', 'Could not read the uploaded files')
+    }
+
+    // Responsive case-study image: variants + widths in one request (§6).
+    const variantWidths = form.get('variantWidths')
+    if (typeof variantWidths === 'string' && variantWidths.trim().length > 0) {
+      const result = await uploadProjectImage(context.env, user, form, variantWidths)
+      if (!result.ok) return result.response
+      await audit(
+        context.env,
+        actorOf(user),
+        'upload',
+        'media',
+        result.row.id,
+        `Uploaded ${result.row.filename} (responsive)`,
+      )
+      return json({ items: [mediaView(context.env, result.row)] }, { status: 201 })
     }
 
     const files = [...form.getAll('file'), ...form.getAll('files')].filter(

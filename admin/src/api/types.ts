@@ -48,13 +48,90 @@ export type MediaView = {
   tags: string[]
   source: string
   createdAt: string
+  variants: { w: number; url: string }[]
 }
 
 export type MediaMap = Record<string, MediaView>
 
 export type MediaUsage =
-  | { kind: 'document'; slug: string; type: string; title: string }
+  | { kind: 'document'; slug: string; type: string; title: string; label: string; collection: string }
   | { kind: 'entry'; id: string; collection: string; label: string }
+  | { kind: 'project'; id: string; slug: string; title: string; label: string; collection: string }
+
+export type ProjectCategory = {
+  id?: string
+  slug: string
+  label: string
+  position?: number
+  projectCount?: number
+}
+export type ImageRef = {
+  mediaId: string
+  alt?: string
+  focalX?: number
+  focalY?: number
+}
+
+export type ProjectInput = {
+  title?: string
+  slug?: string
+  clientName?: string
+  categories?: string[]
+  isFeatured?: boolean
+  position?: number
+  cardImage?: ImageRef
+  heroType?: 'image' | 'video'
+  heroImage?: ImageRef
+  heroImageMobile?: ImageRef
+  heroVideoUrl?: string
+  heroLead?: string
+  heroBody?: string
+  introHtml?: string
+  featureHeading?: string
+  featureText?: string
+  featureImage?: ImageRef
+  gallery?: ImageRef[]
+  testimonialQuote?: string
+  testimonialAuthor?: string
+  testimonialCompany?: string
+  relatedMode?: 'auto' | 'manual'
+  relatedIds?: string[]
+  seoTitle?: string
+  seoDescription?: string
+  ogImage?: ImageRef
+}
+
+export type PublishChecklistItem = {
+  key: string
+  label: string
+  ok: boolean
+  warning?: boolean
+}
+
+export type ProjectView = ProjectInput & {
+  id: string
+  status: string
+  publishedAt: string | null
+  categories: ProjectCategory[]
+  checklist: PublishChecklistItem[]
+  createdAt: string
+  updatedAt: string
+}
+
+export type ProjectResponse = {
+  item: ProjectView
+  media: MediaMap
+}
+
+export type ProjectListResponse = {
+  items: ProjectView[]
+  categories: ProjectCategory[]
+  media: MediaMap
+}
+
+export type ProjectCategoryResponse = {
+  item: ProjectCategory
+}
 
 export type DocumentView = {
   slug: string

@@ -146,6 +146,8 @@ export interface Env {
   // --- Optional / local-only ----------------------------------------------
   /** HMAC key for preview tokens (secret). */
   PREVIEW_SECRET?: string
+  /** Comma-separated hosts allowed for a project hero video (default: ik.imagekit.io). */
+  ALLOWED_VIDEO_HOSTS?: string
   /** Turnstile secret (site project only). */
   TURNSTILE_SECRET?: string
   /** Salt for IP hashing (secret). */

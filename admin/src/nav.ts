@@ -42,7 +42,7 @@ export const NAV: NavSection[] = [
     items: [
       { label: 'Inbox', to: '/submissions', icon: Inbox },
       { label: 'Pages', to: '/pages', icon: FileText },
-      { label: 'Projects', to: '/collections/projects', icon: Layers },
+      { label: 'Projects', to: '/projects', icon: Layers },
       { label: 'Services', to: '/collections/services', icon: Layers },
       { label: 'Testimonials', to: '/collections/testimonials', icon: Layers },
       { label: 'Clients', to: '/collections/clients', icon: Layers },

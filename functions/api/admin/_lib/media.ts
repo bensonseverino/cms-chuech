@@ -1,4 +1,4 @@
-import { collectMediaIds, type Env } from '@marino/api-kit'
+import { collectMediaIds, parseVariants, type Env } from '@marino/api-kit'
 import { parseObject } from './db'
 
 /*
@@ -28,6 +28,7 @@ export type MediaRow = {
   source: string
   deleted_at: string | null
   created_at: string
+  variants: string | null
 }
 
 export type MediaView = {
@@ -47,10 +48,12 @@ export type MediaView = {
   tags: string[]
   source: string
   createdAt: string
+  /** Responsive renditions, ascending; empty for GIF/SVG/legacy files. */
+  variants: { w: number; url: string }[]
 }
 
 const MEDIA_COLUMNS =
-  'id, r2_key, kind, mime, size, width, height, duration, filename, alt, focus_x, focus_y, poster_media_id, tags, source, deleted_at, created_at'
+  'id, r2_key, kind, mime, size, width, height, duration, filename, alt, focus_x, focus_y, poster_media_id, tags, source, deleted_at, created_at, variants'
 
 export function mediaView(env: Env, row: MediaRow): MediaView {
   return {
@@ -71,6 +74,10 @@ export function mediaView(env: Env, row: MediaRow): MediaView {
     tags: tagsOf(row.tags),
     source: row.source,
     createdAt: row.created_at,
+    variants: parseVariants(row.variants).map((variant) => ({
+      w: variant.w,
+      url: mediaUrl(env, variant.key),
+    })),
   }
 }
 
@@ -128,12 +135,22 @@ export type MediaUsage =
       slug: string
       type: string
       title: string
+      label: string
+      collection: string
     }
   | {
       kind: 'entry'
       id: string
       collection: string
       label: string
+    }
+  | {
+      kind: 'project'
+      id: string
+      slug: string
+      title: string
+      label: string
+      collection: string
     }
 
 /**
@@ -170,6 +187,8 @@ export async function findMediaUsage(env: Env, id: string): Promise<MediaUsage[]
       slug: row.slug,
       type: row.type,
       title: row.title,
+      label: row.title,
+      collection: row.type,
     })
   }
 
@@ -181,6 +200,23 @@ export async function findMediaUsage(env: Env, id: string): Promise<MediaUsage[]
       collection: row.collection,
       label: entryLabelFromData(row.collection, data),
     })
+  }
+
+  // Case studies keep an indexed `media_usage` table (rebuilt on every save).
+  // The LIKE fallback covers a row written before that rebuild existed.
+  const projects = await env.DB.prepare(
+    `SELECT DISTINCT p.id, p.slug, p.title
+       FROM projects p
+      WHERE p.id IN (SELECT entity_id FROM media_usage WHERE media_id = ? AND entity = 'project')
+         OR p.card_image LIKE ? OR p.hero_image LIKE ? OR p.hero_image_mobile LIKE ?
+         OR p.feature_image LIKE ? OR p.gallery LIKE ? OR p.og_image LIKE ?
+      ORDER BY p.title COLLATE NOCASE`,
+  )
+    .bind(id, marker, marker, marker, marker, marker, marker)
+    .all<{ id: string; slug: string; title: string }>()
+
+  for (const row of projects.results ?? []) {
+    usage.push({ kind: 'project', id: row.id, slug: row.slug, title: row.title, label: row.title, collection: 'projects' })
   }
 
   return usage

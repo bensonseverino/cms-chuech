@@ -139,7 +139,7 @@ export const onRequestDelete: PagesFunction<Env> = (context) =>
     if (usage.length > 0) {
       const first = usage
         .slice(0, 3)
-        .map((item) => (item.kind === 'document' ? item.title : item.label))
+        .map((item) => (item.kind === 'document' || item.kind === 'project' ? item.title : item.label))
         .join(', ')
       return error(
         'conflict',
