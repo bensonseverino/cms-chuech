@@ -1,6 +1,7 @@
 import { dataResponse, error, contentVersion, withEdgeCache } from '../_lib/types'
 import { getDocument, listEntries } from '../_lib/content'
 import { resolveMedia } from '../_lib/media'
+import { listVisibleReviews } from '../_lib/reviews'
 import type { Env, PagesContext } from '../_lib/types'
 
 /*
@@ -11,12 +12,12 @@ import type { Env, PagesContext } from '../_lib/types'
 export const onRequestGet = async (context: PagesContext<Env>): Promise<Response> => {
   const version = await contentVersion(context.env)
   return withEdgeCache(context.request, context, version, async () => {
-    const [index, services, projects, clients, testimonials, home] = await Promise.all([
+    const [index, services, projects, clients, reviews, home] = await Promise.all([
       getDocument<Record<string, unknown>>(context.env, '_services'),
       listEntries<Record<string, unknown>>(context.env, 'services'),
       listEntries<Record<string, unknown>>(context.env, 'projects', { limit: 50 }),
       listEntries<Record<string, unknown>>(context.env, 'clients'),
-      listEntries<Record<string, unknown>>(context.env, 'testimonials'),
+      listVisibleReviews(context.env, { featured: true, limit: 50, offset: 0 }),
       // The shared Experience band on /services renders `_home.stats`.
       getDocument<Record<string, unknown>>(context.env, '_home'),
     ])
@@ -24,6 +25,15 @@ export const onRequestGet = async (context: PagesContext<Env>): Promise<Response
     if (!index.data) {
       return error('not_found', 'No published services page yet')
     }
+
+    // The frontend maps `{ quote, author, company }` — serve reviews in that
+    // shape under the legacy key (forms-reviews spec §9).
+    const testimonials = reviews.reviews.map((row) => ({
+      id: row.id,
+      quote: row.quote,
+      author: row.author_name,
+      ...(row.company ? { company: row.company } : {}),
+    }))
 
     const data = {
       index: index.data,

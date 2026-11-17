@@ -43,6 +43,8 @@ export type ProjectRow = {
   seo_title: string | null
   seo_description: string | null
   og_image: string | null
+  /** forms-reviews spec §9: the review row that replaces the inline columns. */
+  review_id: string | null
   created_at: string | null
 }
 
@@ -297,7 +299,7 @@ async function cardsForRows(
   for (let index = 0; index < rows.length; index += 1) {
     const row = rows[index]
     const image = assets[index]
-    if (!image) continue
+    if (!row || !image) continue
     cards.push({
       id: row.id,
       slug: row.slug,
@@ -534,7 +536,16 @@ export async function getProjectDetail(env: Env, row: ProjectRow): Promise<Proje
       ...(featureImage ? { image: featureImage } : {}),
     }
   }
-  if (row.testimonial_quote) {
+  // Testimonial (forms-reviews spec §9): the linked review row wins; the inline
+  // columns are the fallback so pre-migration rows keep rendering.
+  const linkedReview = await reviewById(env, row.review_id)
+  if (linkedReview) {
+    detail.testimonial = {
+      quote: linkedReview.quote,
+      author: linkedReview.authorName,
+      company: linkedReview.company ?? row.title,
+    }
+  } else if (row.testimonial_quote) {
     detail.testimonial = {
       quote: row.testimonial_quote,
       author: row.testimonial_author ?? '',
@@ -543,6 +554,24 @@ export async function getProjectDetail(env: Env, row: ProjectRow): Promise<Proje
   }
 
   return detail
+}
+
+/**
+ * The linked review (forms-reviews spec §9), when it exists and is visible.
+ * Inline testimonial columns stay the fallback for one release.
+ */
+export async function reviewById(
+  env: Env,
+  id: string | null | undefined,
+): Promise<{ quote: string; authorName: string; company: string | null } | null> {
+  if (!id) return null
+  const row = await env.DB.prepare(
+    `SELECT quote, author_name, company FROM reviews WHERE id = ? AND is_visible = 1`,
+  )
+    .bind(id)
+    .first<{ quote: string; author_name: string; company: string | null }>()
+  if (!row) return null
+  return { quote: row.quote, authorName: row.author_name, company: row.company }
 }
 
 /** Detail by slug; drafts only when `includeDrafts` (preview path). */

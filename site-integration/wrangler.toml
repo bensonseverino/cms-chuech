@@ -49,6 +49,15 @@ MEDIA_PUBLIC_BASE = "https://chuechstudio.co.ke/media"
 # TODO(owner): set after Phase 1 — see docs/cloudflare-setup.md §4 and §11.
 SITE_ORIGIN = "https://chuechstudio.co.ke"
 
+# Extra origins allowed to POST submissions (comma-separated; deploy preview
+# domains go here, never a wildcard).
+ALLOWED_ORIGINS = ""
+# Where notifications come from and go by default (forms-reviews spec §5).
+NOTIFY_FROM = "Chuech Studio <noreply@chuechstudio.co.ke>"
+NOTIFY_DEFAULT_TO = "hello@chuechstudio.co.ke"
+# CMS admin base URL used in the "Open in the CMS" email link.
+ADMIN_URL = "https://cms.chuechstudio.co.ke"
+
 # Secrets for this project (set with `wrangler pages secret put`, never here):
-#   TURNSTILE_SECRET, IP_HASH_SALT, PREVIEW_SECRET
+#   TURNSTILE_SECRET, IP_HASH_SALT, PREVIEW_SECRET, RESEND_API_KEY
 # Build variable (Pages dashboard, not a secret): VITE_TURNSTILE_SITE_KEY

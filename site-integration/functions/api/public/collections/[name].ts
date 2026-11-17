@@ -1,6 +1,7 @@
 import { dataResponse, error, contentVersion, withEdgeCache } from '../../_lib/types'
 import { listEntries } from '../../_lib/content'
 import { resolveMedia } from '../../_lib/media'
+import { listVisibleReviews } from '../../_lib/reviews'
 import type { Env, PagesContext } from '../../_lib/types'
 
 const COLLECTIONS = new Set(['services', 'projects', 'testimonials', 'clients', 'articles'])
@@ -20,6 +21,22 @@ export const onRequestGet = async (
 
   const version = await contentVersion(context.env)
   return withEdgeCache(context.request, context, version, async () => {
+    // DEPRECATED (cms-forms-reviews-spec.md §9): testimonials moved to the
+    // `reviews` table. Serve the alias from reviews so existing consumers keep
+    // working — new code uses GET /api/public/reviews instead.
+    if (name === 'testimonials') {
+      const { reviews } = await listVisibleReviews(context.env, { limit: 50, offset: 0 })
+      return dataResponse(
+        reviews.map((row) => ({
+          id: row.id,
+          quote: row.quote,
+          author: row.author_name,
+          ...(row.company ? { company: row.company } : {}),
+        })),
+        version,
+      )
+    }
+
     // Articles are served newest-first (their `date` field, newest at the top);
     // everything else follows the editorial `sort` order.
     const orderNewest = name === 'articles'

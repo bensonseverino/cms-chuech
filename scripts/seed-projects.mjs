@@ -307,6 +307,21 @@ for (const project of projects) {
     statements.push(`INSERT OR IGNORE INTO media_usage (media_id, entity, entity_id)
       SELECT ${quote(mediaRef.mediaId)}, 'project', id FROM projects WHERE slug = ${quote(project.slug)};`)
   }
+
+  // The project's testimonial also lives in `reviews` (forms-reviews spec §9):
+  // seed it there and point projects.review_id at it, keeping the inline
+  // columns as the fallback for one release.
+  if (project.testimonial_quote) {
+    const reviewId = `rev_project_${project.slug}`
+    statements.push(`INSERT INTO reviews (id, quote, author_name, company, is_visible, position, created_at, updated_at)
+      VALUES (${quote(reviewId)}, ${quote(project.testimonial_quote)}, ${quote(project.testimonial_author ?? 'Client')}, ${quote(project.testimonial_company)}, 1, 100 + ${quote(project.position)}, datetime('now'), datetime('now'))
+      ON CONFLICT(id) DO UPDATE SET
+        quote = excluded.quote,
+        author_name = excluded.author_name,
+        company = excluded.company,
+        updated_at = datetime('now');`)
+    statements.push(`UPDATE projects SET review_id = ${quote(reviewId)} WHERE slug = ${quote(project.slug)} AND (review_id IS NULL OR review_id = ${quote(reviewId)});`)
+  }
 }
 
 statements.push("UPDATE meta SET value = CAST(value AS INTEGER) + 1 WHERE key = 'content_version';")

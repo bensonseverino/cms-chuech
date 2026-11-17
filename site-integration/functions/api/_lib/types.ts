@@ -72,6 +72,18 @@ export interface Env {
   PREVIEW_SECRET?: string
   /** Local dev only — never set in Cloudflare. */
   TURNSTILE_BYPASS?: string
+
+  // --- Forms + email notifications (cms-forms-reviews-spec.md §4, §5) ------
+  /** Extra origins allowed to POST submissions (comma-separated; no wildcard). */
+  ALLOWED_ORIGINS?: string
+  /** Resend API key — secret. A missing key marks notifications failed, never the submission. */
+  RESEND_API_KEY?: string
+  /** From address for notifications, e.g. "Chuech Studio <noreply@chuechstudio.co.ke>". */
+  NOTIFY_FROM?: string
+  /** Default recipient when a form and site_settings define none. */
+  NOTIFY_DEFAULT_TO?: string
+  /** CMS admin base URL used in the "Open in the CMS" email link. */
+  ADMIN_URL?: string
 }
 
 // --- Pages Functions context -------------------------------------------------
