@@ -32,7 +32,7 @@ export async function signPreviewToken(
 
   const payload = `${slug}.${Date.now() + ttlSeconds * 1000}`
   const signature = await hmac(secret, payload)
-  return `${base64url(payload)}.${base64url(signature)}`
+  return `${base64urlString(payload)}.${base64url(signature)}`
 }
 
 export async function verifyPreviewToken(

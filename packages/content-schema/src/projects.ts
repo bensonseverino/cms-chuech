@@ -145,7 +145,7 @@ export const PROJECT_INPUT_KEYS = [
 ] as const
 
 /** Title → URL slug: lowercase words joined by single hyphens. */
-export function slugify(value: string, max = PROJECT_LIMITS.slug): string {
+export function slugify(value: string, max: number = PROJECT_LIMITS.slug): string {
   return value
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -263,6 +263,11 @@ export function isPublishable(project: Partial<ProjectInput>): boolean {
 
 export const DEFAULT_VIDEO_HOSTS = ['ik.imagekit.io']
 
+/* This package typechecks without DOM/node libs, but `URL` exists in every
+   runtime the schema runs in (Workers, Node, the browser). */
+type ParsedUrl = { protocol: string; hostname: string }
+declare const URL: { new (url: string): ParsedUrl }
+
 /**
  * `hero_video_url` must be https and its host must be allow-listed. The list
  * comes from the `ALLOWED_VIDEO_HOSTS` env var (comma separated) so the owner
@@ -270,7 +275,7 @@ export const DEFAULT_VIDEO_HOSTS = ['ik.imagekit.io']
  */
 export function videoUrlError(url: string | undefined, allowedHosts: readonly string[]): string | null {
   if (!url) return null
-  let parsed: URL
+  let parsed: ParsedUrl
   try {
     parsed = new URL(url)
   } catch {

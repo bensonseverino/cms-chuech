@@ -206,6 +206,8 @@ export type SubmissionView = {
   phone: string | null
   message: string | null
   fields: Record<string, unknown>
+  /** The case study a `call-back` form was submitted from, when present. */
+  project: { slug: string; title: string } | null
   pagePath: string | null
   referrer: string | null
   utm: Record<string, unknown>

@@ -62,13 +62,14 @@ export default function Submissions() {
 
   const [status, setStatus] = useState(() => searchParams.get('status') ?? 'all')
   const [source, setSource] = useState(() => searchParams.get('source') ?? '')
+  const [project, setProject] = useState(() => searchParams.get('project') ?? '')
   const [query, setQuery] = useState(() => searchParams.get('q') ?? '')
   const [from, setFrom] = useState(() => searchParams.get('from') ?? '')
   const [to, setTo] = useState(() => searchParams.get('to') ?? '')
   const [page, setPage] = useState(() => Number(searchParams.get('page') ?? 1) || 1)
   const deferredQuery = useDeferredValue(query)
   const [showFilters, setShowFilters] = useState(
-    Boolean(from || to || source || searchParams.get('source')),
+    Boolean(from || to || source || searchParams.get('source') || searchParams.get('project')),
   )
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkAction, setBulkAction] = useState('read')
@@ -78,6 +79,7 @@ export default function Submissions() {
   const path = `/submissions${queryString({
     status: status === 'all' ? undefined : status,
     source: source || undefined,
+    project: project || undefined,
     q: deferredQuery.trim() || undefined,
     from: from || undefined,
     to: to || undefined,
@@ -86,17 +88,21 @@ export default function Submissions() {
   })}`
   const { data, error, loading, reload } = useApi<SubmissionListResponse>(path)
   const sources = useApi<{ items: FormSourceOption[] }>('/submissions/sources')
+  const projects = useApi<{ items: { id: string; slug: string; title: string }[] }>(
+    '/projects?limit=100',
+  )
 
   useEffect(() => {
     const next = new URLSearchParams()
     if (status !== 'all') next.set('status', status)
     if (source) next.set('source', source)
+    if (project) next.set('project', project)
     if (query.trim()) next.set('q', query.trim())
     if (from) next.set('from', from)
     if (to) next.set('to', to)
     if (page > 1) next.set('page', String(page))
     setSearchParams(next, { replace: true })
-  }, [status, source, query, from, to, page, setSearchParams])
+  }, [status, source, project, query, from, to, page, setSearchParams])
 
   useEffect(() => {
     setSelected(new Set())
@@ -105,7 +111,7 @@ export default function Submissions() {
   const items = data?.items ?? []
   const counts = data?.counts ?? {}
   const allSelected = items.length > 0 && items.every((item) => selected.has(item.id))
-  const filtersActive = Boolean(source || from || to || query.trim() || status !== 'all')
+  const filtersActive = Boolean(source || project || from || to || query.trim() || status !== 'all')
 
   const tabItems = useMemo(
     () =>
@@ -122,6 +128,7 @@ export default function Submissions() {
   const exportHref = `/api/admin/submissions/export${queryString({
     status: status === 'all' ? undefined : status,
     source: source || undefined,
+    project: project || undefined,
     q: query.trim() || undefined,
     from: from || undefined,
     to: to || undefined,
@@ -224,6 +231,18 @@ export default function Submissions() {
                 label: `${item.label} (${item.count})`,
               }))}
             />
+            <Select
+              label="Project"
+              value={project}
+              onChange={(event) => {
+                updateFilter(setProject)(event.target.value)
+              }}
+              placeholder="All projects"
+              options={(projects.data?.items ?? []).map((item) => ({
+                value: item.slug,
+                label: item.title,
+              }))}
+            />
             <TextInput
               label="From"
               type="date"
@@ -244,6 +263,7 @@ export default function Submissions() {
                 onClick={() => {
                   setStatus('all')
                   setSource('')
+                  setProject('')
                   setQuery('')
                   setFrom('')
                   setTo('')
@@ -415,6 +435,11 @@ function SubmissionRow({
           <span className="truncate text-[12px] font-medium">
             {submission.formLabel ?? submission.source}
           </span>
+          {submission.project ? (
+            <span className="truncate text-[11px] text-obsidian/60">
+              Project: {submission.project.title || submission.project.slug}
+            </span>
+          ) : null}
           <span className="truncate text-[11px] text-obsidian/45">
             {submission.pagePath || submission.referrer || 'Direct'}
           </span>

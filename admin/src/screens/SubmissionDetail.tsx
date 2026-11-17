@@ -317,6 +317,12 @@ export default function SubmissionDetail() {
           <Panel>
             <PanelHeading title="Context" />
             <dl className="flex flex-col gap-3">
+              {item.project && (
+                <Detail
+                  label="Project"
+                  value={item.project.title || item.project.slug}
+                />
+              )}
               <Detail label="Page" value={item.pagePath || '—'} />
               <Detail label="Referrer" value={item.referrer || '—'} />
               <Detail

@@ -47,6 +47,8 @@ export type SubmissionView = {
   phone: string | null
   message: string | null
   fields: Record<string, unknown>
+  /** The case study a `call-back` form was submitted from, when present (§8). */
+  project: { slug: string; title: string } | null
   pagePath: string | null
   referrer: string | null
   utm: Record<string, unknown>
@@ -75,6 +77,8 @@ export type SubmissionFilters = {
   q?: string
   from?: string
   to?: string
+  /** Case-study slug from `_context` (cms-projects-spec.md §8). */
+  project?: string
 }
 
 export type BuiltFilter = { where: string; bindings: unknown[] }
@@ -104,6 +108,11 @@ export function buildSubmissionFilter(
     bindings.push(like, like, like, like, like)
   }
 
+  if (filters.project) {
+    conditions.push("json_extract(s.fields, '$._context.projectSlug') = ?")
+    bindings.push(filters.project)
+  }
+
   if (filters.from && isIsoDate(filters.from)) {
     conditions.push('date(s.created_at) >= date(?)')
     bindings.push(filters.from)
@@ -131,6 +140,7 @@ export function submissionView(row: SubmissionRow): SubmissionView {
     phone: row.phone,
     message: row.message,
     fields: parseObject(row.fields),
+    project: projectContext(parseObject(row.fields)),
     pagePath: row.page_path,
     referrer: row.referrer,
     utm: parseObject(row.utm),
@@ -154,6 +164,17 @@ function parseObject(value: string | null): Record<string, unknown> {
   } catch {
     return {}
   }
+}
+
+/** The reserved `_context` key the call-back form stores (cms-projects-spec.md §8). */
+function projectContext(fields: Record<string, unknown>): { slug: string; title: string } | null {
+  const raw = fields._context
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return null
+  const context = raw as { projectSlug?: unknown; projectTitle?: unknown }
+  const slug = typeof context.projectSlug === 'string' ? context.projectSlug : ''
+  const title = typeof context.projectTitle === 'string' ? context.projectTitle : ''
+  if (!slug && !title) return null
+  return { slug, title }
 }
 
 export async function loadSubmission(env: Env, id: string): Promise<SubmissionRow | null> {

@@ -107,7 +107,7 @@ export type CategoryView = {
   projectCount?: number
 }
 
-export type ProjectView = ProjectInput & {
+export type ProjectView = Omit<ProjectInput, 'categories'> & {
   id: string
   status: string
   publishedAt: string | null

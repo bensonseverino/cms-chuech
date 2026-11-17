@@ -68,6 +68,8 @@ export interface Env {
   // --- Optional / local-only ---------------------------------------------
   TURNSTILE_SECRET?: string
   IP_HASH_SALT?: string
+  /** HMAC key for short-lived draft preview tokens (cms-projects-spec.md §5.1). */
+  PREVIEW_SECRET?: string
   /** Local dev only — never set in Cloudflare. */
   TURNSTILE_BYPASS?: string
 }

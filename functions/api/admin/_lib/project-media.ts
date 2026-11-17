@@ -126,7 +126,7 @@ export async function uploadProjectImage(
       .bind(
         id,
         largest.key,
-        largest.file.size,
+        order[order.length - 1].file.size,
         width,
         height,
         filename,

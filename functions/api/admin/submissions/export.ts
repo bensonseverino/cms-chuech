@@ -27,6 +27,7 @@ export const onRequestGet: PagesFunction<Env> = (context) =>
     const q = url.searchParams.get('q')?.trim()
     const from = url.searchParams.get('from')?.trim()
     const to = url.searchParams.get('to')?.trim()
+    const project = url.searchParams.get('project')?.trim()
 
     if (status && status !== 'all' && !isSubmissionStatus(status)) {
       return error('bad_request', 'Unknown submission status')
@@ -40,6 +41,7 @@ export const onRequestGet: PagesFunction<Env> = (context) =>
       q: q && q.length > 0 ? q.slice(0, 200) : undefined,
       from: from && from.length > 0 ? from : undefined,
       to: to && to.length > 0 ? to : undefined,
+      project: project && project.length > 0 ? project.slice(0, 200) : undefined,
     })
 
     const { results } = await context.env.DB.prepare(
@@ -63,27 +65,40 @@ export const onRequestGet: PagesFunction<Env> = (context) =>
         'phone',
         'message',
         'extra_fields',
+        'project',
         'page_path',
         'referrer',
         'utm',
         'notes',
       ],
-      ...rows.map((row) => [
-        row.id,
-        row.created_at,
-        row.source,
-        row.form_label ?? '',
-        row.status,
-        row.name ?? '',
-        row.email ?? '',
-        row.phone ?? '',
-        row.message ?? '',
-        row.fields,
-        row.page_path ?? '',
-        row.referrer ?? '',
-        row.utm,
-        row.notes,
-      ]),
+      ...rows.map((row) => {
+        let project = ''
+        try {
+          const context = JSON.parse(row.fields ?? '{}') as {
+            _context?: { projectSlug?: string; projectTitle?: string }
+          }
+          project = context._context?.projectTitle ?? context._context?.projectSlug ?? ''
+        } catch {
+          project = ''
+        }
+        return [
+          row.id,
+          row.created_at,
+          row.source,
+          row.form_label ?? '',
+          row.status,
+          row.name ?? '',
+          row.email ?? '',
+          row.phone ?? '',
+          row.message ?? '',
+          row.fields,
+          project,
+          row.page_path ?? '',
+          row.referrer ?? '',
+          row.utm,
+          row.notes,
+        ]
+      }),
     ]
 
     await audit(

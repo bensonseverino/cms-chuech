@@ -78,6 +78,7 @@ function readFilters(url: URL): FilterResult {
   const q = url.searchParams.get('q')?.trim()
   const from = url.searchParams.get('from')?.trim()
   const to = url.searchParams.get('to')?.trim()
+  const project = url.searchParams.get('project')?.trim()
 
   if (status && status !== 'all' && !isSubmissionStatus(status)) {
     return { ok: false, error: 'Unknown submission status' }
@@ -93,6 +94,7 @@ function readFilters(url: URL): FilterResult {
       q: q && q.length > 0 ? q.slice(0, 200) : undefined,
       from: from && from.length > 0 ? from : undefined,
       to: to && to.length > 0 ? to : undefined,
+      project: project && project.length > 0 ? project.slice(0, 200) : undefined,
     },
   }
 }

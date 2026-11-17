@@ -14,12 +14,21 @@ import type { Env } from './types'
  */
 export const HONEYPOT_FIELD = '_gotcha'
 
+export type FormContext = {
+  /** The case study the form was submitted from, e.g. 'eventotron'. */
+  projectSlug?: string
+  /** The case study title shown in the inbox, e.g. 'Eventotron'. */
+  projectTitle?: string
+}
+
 export type FormSubmissionPayload = {
   name?: string
   email?: string
   phone?: string
   message?: string
   fields?: Record<string, unknown>
+  /** Reserved key (cms-projects-spec.md §8): which project page sent this. */
+  _context?: FormContext
   pagePath?: string
   referrer?: string
   utm?: { source?: string; medium?: string; campaign?: string; term?: string; content?: string }
@@ -50,7 +59,41 @@ export function validatePayload(payload: FormSubmissionPayload): FieldError[] {
     errors.push({ path: 'phone', message: 'Add an email or a phone number so we can reply' })
   }
 
+  // Reserved `_context` (cms-projects-spec.md §8): both keys are optional but,
+  // when present, strings of at most 200 chars — never an arbitrary object.
+  const context = payload._context
+  if (context !== undefined) {
+    if (typeof context !== 'object' || context === null || Array.isArray(context)) {
+      errors.push({ path: '_context', message: 'Invalid context' })
+    } else {
+      for (const key of ['projectSlug', 'projectTitle'] as const) {
+        const value = (context as FormContext)[key]
+        if (value !== undefined && (typeof value !== 'string' || value.length > 200)) {
+          errors.push({ path: `_context.${key}`, message: 'Too long' })
+        }
+      }
+    }
+  }
+
   return errors
+}
+
+/**
+ * The validated `_context`, or undefined. Stored inside the submission's
+ * `fields` JSON under the same key so the inbox can show (and filter by) the
+ * project a call-back came from without a schema change.
+ */
+export function contextForFields(payload: FormSubmissionPayload): FormContext | undefined {
+  const context = payload._context
+  if (typeof context !== 'object' || context === null || Array.isArray(context)) return undefined
+
+  const out: FormContext = {}
+  const slug = typeof context.projectSlug === 'string' ? context.projectSlug.slice(0, 200) : undefined
+  const title =
+    typeof context.projectTitle === 'string' ? context.projectTitle.slice(0, 200) : undefined
+  if (slug) out.projectSlug = slug
+  if (title) out.projectTitle = title
+  return out.projectSlug || out.projectTitle ? out : undefined
 }
 
 // --- Origin ------------------------------------------------------------------
@@ -197,6 +240,11 @@ export async function insertSubmission(
 ): Promise<InsertResult> {
   const id = submissionId()
 
+  // `_context` is not an owner-typed input: it merges into the extra-fields
+  // JSON so the inbox can show and filter by the project (cms-projects-spec.md §8).
+  const context = contextForFields(payload)
+  const fields = { ...(payload.fields ?? {}), ...(context ? { _context: context } : {}) }
+
   try {
     await env.DB.prepare(
       `INSERT INTO submissions
@@ -210,7 +258,7 @@ export async function insertSubmission(
         payload.email ?? null,
         payload.phone ?? null,
         payload.message ?? null,
-        JSON.stringify(payload.fields ?? {}),
+        JSON.stringify(fields),
         payload.pagePath ?? null,
         payload.referrer ?? null,
         JSON.stringify(payload.utm ?? {}),
