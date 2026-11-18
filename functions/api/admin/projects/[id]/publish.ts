@@ -60,6 +60,7 @@ export const onRequestPost: PagesFunction<Env> = (context) =>
         feature_text: view.featureText ?? null,
         feature_image: view.featureImage ? JSON.stringify(view.featureImage) : null,
         gallery: JSON.stringify(view.gallery ?? []),
+        review_id: view.reviewId ?? null,
         testimonial_quote: view.testimonialQuote ?? null,
         testimonial_author: view.testimonialAuthor ?? null,
         testimonial_company: view.testimonialCompany ?? null,

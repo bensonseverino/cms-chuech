@@ -44,6 +44,7 @@ export const PROJECT_COLUMNS = [
   'feature_text',
   'feature_image',
   'gallery',
+  'review_id',
   'testimonial_quote',
   'testimonial_author',
   'testimonial_company',
@@ -77,6 +78,7 @@ export type ProjectRow = {
   feature_text: string | null
   feature_image: string | null
   gallery: string
+  review_id: string | null
   testimonial_quote: string | null
   testimonial_author: string | null
   testimonial_company: string | null
@@ -221,6 +223,7 @@ export function rowToInput(row: ProjectRow, categorySlugs: string[] = []): Proje
   if (row.testimonial_quote) input.testimonialQuote = row.testimonial_quote
   if (row.testimonial_author) input.testimonialAuthor = row.testimonial_author
   if (row.testimonial_company) input.testimonialCompany = row.testimonial_company
+  input.reviewId = row.review_id
   if (row.seo_title) input.seoTitle = row.seo_title
   if (row.seo_description) input.seoDescription = row.seo_description
   const og = parseImageRef(row.og_image)
@@ -549,7 +552,7 @@ export function projectSaveStatements(
          card_image = ?, hero_type = ?, hero_image = ?, hero_image_mobile = ?,
          hero_video_url = ?, hero_lead = ?, hero_body = ?, intro_html = ?,
          feature_heading = ?, feature_text = ?, feature_image = ?, gallery = ?,
-         testimonial_quote = ?, testimonial_author = ?, testimonial_company = ?,
+         review_id = ?, testimonial_quote = ?, testimonial_author = ?, testimonial_company = ?,
          related_mode = ?, related_ids = ?, seo_title = ?, seo_description = ?,
          og_image = ?, updated_at = datetime('now')
        WHERE id = ?`,
@@ -571,6 +574,7 @@ export function projectSaveStatements(
       input.featureText ?? null,
       imageColumn(input.featureImage),
       imageRefsColumn(input.gallery),
+      input.reviewId ?? null,
       input.testimonialQuote ?? null,
       input.testimonialAuthor ?? null,
       input.testimonialCompany ?? null,

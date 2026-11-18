@@ -53,6 +53,13 @@ preview_id = "486bba6292bb4c7e91bc32779937b711"
 MEDIA_PUBLIC_BASE = "https://chuechstudio.co.ke/media"
 SITE_ORIGIN = "https://chuechstudio.co.ke"
 CMS_ORIGIN = "https://cms2chuech.pages.dev"
+# Email notifications (forms-reviews spec §5). NOTIFY_FROM must be a sender on
+# a domain verified with Resend. RESEND_API_KEY is a secret:
+#   npx wrangler pages secret put RESEND_API_KEY --project-name cms2chuech
+NOTIFY_FROM = "Chuech Studio CMS <notifications@chuechstudio.co.ke>"
+NOTIFY_DEFAULT_TO = "hello@chuechstudio.co.ke"
+# Deep links in notification emails point here (no trailing slash).
+ADMIN_URL = "https://cms2chuech.pages.dev"
 
 # --- Authentication ----------------------------------------------------------
 # The admin API has ONE identity source: the `cms_session` cookie issued by

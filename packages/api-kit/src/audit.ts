@@ -24,6 +24,8 @@ export type AuditAction =
   | 'status'
   | 'bulk'
   | 'purge'
+  | 'resend'
+  | 'test'
 
 export type AuditActor = { email: string } | null
 

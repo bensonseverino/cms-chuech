@@ -154,6 +154,16 @@ export interface Env {
   IP_HASH_SALT?: string
   /** Local dev only — bypasses Turnstile verification. */
   TURNSTILE_BYPASS?: string
+
+  // --- Email notifications (forms-reviews spec §5) --------------------------
+  /** Resend API key (secret). Missing → notifications are `skipped`. */
+  RESEND_API_KEY?: string
+  /** Verified sender, e.g. `CMS <notifications@example.com>`. */
+  NOTIFY_FROM?: string
+  /** Fallback recipient when neither the form nor settings name one. */
+  NOTIFY_DEFAULT_TO?: string
+  /** Admin origin for deep links in notification emails. */
+  ADMIN_URL?: string
 }
 
 /** Alias kept for readability at call sites that pass a context around. */

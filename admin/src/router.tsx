@@ -13,6 +13,7 @@ import Pages from './screens/Pages'
 import ProjectCategories from './screens/ProjectCategories'
 import ProjectEditor from './screens/ProjectEditor'
 import Projects from './screens/Projects'
+import Reviews from './screens/Reviews'
 import Settings from './screens/Settings'
 import SubmissionDetail from './screens/SubmissionDetail'
 import Submissions from './screens/Submissions'
@@ -38,6 +39,7 @@ const router = createBrowserRouter([
       { path: 'projects/categories', element: <ProjectCategories /> },
       { path: 'projects/new', element: <ProjectEditor /> },
       { path: 'projects/:id', element: <ProjectEditor /> },
+      { path: 'reviews', element: <Reviews /> },
       { path: 'collections/:name', element: <Collections /> },
       { path: 'collections/:name/:id', element: <EntryEditor /> },
       { path: 'media', element: <Media /> },

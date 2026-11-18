@@ -74,21 +74,38 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col gap-[25px]">
       <div className="grid gap-[25px] sm:grid-cols-2 xl:grid-cols-4">
-        {CARDS.map((card) => (
-          <section
-            key={card.key}
-            className="rounded-panel bg-white p-[25px] shadow-soft"
-            aria-label={card.label}
-          >
-            <h2 className="text-[13px] font-semibold text-obsidian/65">{card.label}</h2>
-            <p className="mt-3 text-[42px] font-bold leading-none tracking-[-0.03em]">
-              {card.key === 'mediaBytes'
-                ? formatBytes(cards?.mediaBytes ?? 0)
-                : (cards?.[card.key] ?? 0)}
-            </p>
-            <p className="mt-3 text-[11px] leading-4 text-obsidian/45">{card.hint}</p>
-          </section>
-        ))}
+        {CARDS.map((card) => {
+          const body = (
+            <>
+              <h2 className="text-[13px] font-semibold text-obsidian/65">{card.label}</h2>
+              <p className="mt-3 text-[42px] font-bold leading-none tracking-[-0.03em]">
+                {card.key === 'mediaBytes'
+                  ? formatBytes(cards?.mediaBytes ?? 0)
+                  : (cards?.[card.key] ?? 0)}
+              </p>
+              <p className="mt-3 text-[11px] leading-4 text-obsidian/45">{card.hint}</p>
+            </>
+          )
+
+          return card.key === 'newSubmissions' ? (
+            <Link
+              key={card.key}
+              to="/submissions?unread=1"
+              className="rounded-panel bg-white p-[25px] shadow-soft transition-shadow duration-[350ms] hover:shadow-float"
+              aria-label={`${card.label}: open the unread inbox`}
+            >
+              {body}
+            </Link>
+          ) : (
+            <section
+              key={card.key}
+              className="rounded-panel bg-white p-[25px] shadow-soft"
+              aria-label={card.label}
+            >
+              {body}
+            </section>
+          )
+        })}
       </div>
 
       <section className="grid gap-[25px] xl:grid-cols-[1.35fr_1fr]">
@@ -267,7 +284,7 @@ export default function Dashboard() {
               {data.cards.newSubmissions === 1 ? '' : 's'} waiting in the inbox.
             </p>
           </div>
-          <Link to="/submissions?status=new" className={buttonClass('primary', 'sm')}>
+          <Link to="/submissions?unread=1" className={buttonClass('primary', 'sm')}>
             Review
             <ArrowRight size={14} strokeWidth={1.8} aria-hidden="true" />
           </Link>

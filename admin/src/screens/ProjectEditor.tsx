@@ -15,6 +15,8 @@ import {
   PageHeader,
   Panel,
   PanelHeading,
+  Modal,
+  SearchInput,
   Select,
   Tabs,
   Textarea,
@@ -23,7 +25,7 @@ import {
 import { ImageRefField } from './ImageRefField'
 import { IntroEditorField } from './IntroEditor-field'
 import { CustomPreviewPanel } from '../components/CustomPreviewPanel'
-import type { MediaView, ProjectView } from '../api/types'
+import type { MediaView, ProjectView, ReviewListResponse, ReviewView } from '../api/types'
 import { slugify } from '@marino/content-schema'
 
 /* Project editor (cms-projects-spec.md §4, §7).
@@ -51,6 +53,7 @@ type Form = {
   featureHeading: string
   featureText: string
   gallery: { mediaId: string; alt?: string; focalX?: number; focalY?: number }[]
+  reviewId: string
   testimonialQuote: string
   testimonialAuthor: string
   testimonialCompany: string
@@ -76,6 +79,7 @@ const emptyForm: Form = {
   featureHeading: '',
   featureText: '',
   gallery: [],
+  reviewId: null,
   testimonialQuote: '',
   testimonialAuthor: '',
   testimonialCompany: '',
@@ -102,6 +106,7 @@ function formFromView(view: ProjectView): Form {
     featureHeading: view.featureHeading ?? '',
     featureText: view.featureText ?? '',
     gallery: view.gallery ?? [],
+    reviewId: view.reviewId ?? null,
     testimonialQuote: view.testimonialQuote ?? '',
     testimonialAuthor: view.testimonialAuthor ?? '',
     testimonialCompany: view.testimonialCompany ?? '',
@@ -134,6 +139,7 @@ export default function ProjectEditor() {
   const { data: publishedData } = useApi<{ items: ProjectView[] }>(
     `/api/admin/projects${queryString({ status: 'published', limit: 50 })}`,
   )
+  const { data: reviewsData, reload: reloadReviews } = useApi<ReviewListResponse>('/reviews')
 
   const [form, setForm] = useState<Form>(emptyForm)
   const [media, setMedia] = useState<Record<string, MediaView>>({})
@@ -149,6 +155,10 @@ export default function ProjectEditor() {
   const [previewActive, setPreviewActive] = useState(false)
   const [previewProject, setPreviewProject] = useState<Record<string, unknown> | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [reviewQuery, setReviewQuery] = useState('')
+  const [createReviewOpen, setCreateReviewOpen] = useState(false)
+  const [newReview, setNewReview] = useState({ quote: '', authorName: '', company: '' })
+  const [creatingReview, setCreatingReview] = useState(false)
 
   const formRef = useRef(form)
   formRef.current = form
@@ -187,6 +197,39 @@ export default function ProjectEditor() {
     [],
   )
 
+  const createReview = useCallback(async () => {
+    const quote = newReview.quote.trim()
+    const authorName = newReview.authorName.trim()
+    if (!quote || !authorName) {
+      push({ tone: 'error', title: 'A review needs a quote and an author name' })
+      return
+    }
+    setCreatingReview(true)
+    try {
+      const response = await api.post<{ item: ReviewView | null }>('/reviews', {
+        quote,
+        authorName,
+        company: newReview.company.trim(),
+        isVisible: true,
+      })
+      if (response.item) {
+        update('reviewId', response.item.id)
+      }
+      setCreateReviewOpen(false)
+      setNewReview({ quote: '', authorName: '', company: '' })
+      reloadReviews()
+      push({ title: 'Review added and selected' })
+    } catch (cause: any) {
+      push({
+        tone: 'error',
+        title: 'Could not create the review',
+        description: cause?.message ?? 'Something went wrong',
+      })
+    } finally {
+      setCreatingReview(false)
+    }
+  }, [newReview, push, reloadReviews, update])
+
   const removeGalleryItem = useCallback(
     (index: number) => {
       setForm((f) => ({
@@ -219,6 +262,7 @@ export default function ProjectEditor() {
     try {
       const payload = {
         ...formRef.current,
+        reviewId: formRef.current.reviewId || null,
       }
       const response = await api.put(`/api/admin/projects/${id}`, payload)
       setMedia((response as any).media ?? media)
@@ -239,7 +283,7 @@ export default function ProjectEditor() {
     setFieldErrors([])
     try {
       if (dirty) {
-        const payload = { ...formRef.current }
+        const payload = { ...formRef.current, reviewId: formRef.current.reviewId || null }
         await api.put(`/api/admin/projects/${id}`, payload)
         setDirty(false)
       }
@@ -762,31 +806,104 @@ export default function ProjectEditor() {
 
           {activeSection === 'testimonial' && (
             <div className="flex flex-col gap-4">
-              <Textarea
-                label="Quote"
-                value={form.testimonialQuote}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  update('testimonialQuote', e.target.value)
-                }
-                placeholder="This team changed how we think about our brand."
-                maxLength={800}
-              />
-              <TextInput
-                label="Author"
-                value={form.testimonialAuthor}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  update('testimonialAuthor', e.target.value)
-                }
-                placeholder="Jane Doe"
-              />
-              <TextInput
-                label="Company"
-                value={form.testimonialCompany}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  update('testimonialCompany', e.target.value)
-                }
-                placeholder="Acme Corp"
-              />
+              <p className="text-[13px] leading-6 text-obsidian/55">
+                The project page shows the quote from the review you pick here. Reviews are managed in
+                one place, so the same quote stays consistent across the site.
+              </p>
+
+              {(() => {
+                const reviews = reviewsData?.items ?? []
+                const selectedReview = reviews.find((review) => review.id === form.reviewId) ?? null
+                const needle = reviewQuery.trim().toLowerCase()
+                const matches = reviews.filter((review) =>
+                  [review.quote, review.authorName, review.company, review.authorRole]
+                    .filter(Boolean)
+                    .join(' ')
+                    .toLowerCase()
+                    .includes(needle),
+                )
+
+                return (
+                  <>
+                    {selectedReview ? (
+                      <div className="rounded-panel border border-obsidian/10 bg-white p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <blockquote className="min-w-0 flex-1 text-[14px] leading-6 text-obsidian/85">
+                            <span aria-hidden="true">“</span>
+                            {selectedReview.quote}
+                            <span aria-hidden="true">”</span>
+                          </blockquote>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => update('reviewId', '')}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                        <p className="mt-2 text-[12px] text-obsidian/60">
+                          <span className="font-semibold">{selectedReview.authorName}</span>
+                          {selectedReview.company ? ` · ${selectedReview.company}` : ''}
+                          {selectedReview.isVisible ? '' : ' · hidden review'}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="rounded-card-lg bg-fog px-3 py-2 text-[12px] text-obsidian/55">
+                        No testimonial selected. The project page will not show a quote.
+                      </p>
+                    )}
+
+                    <div className="rounded-panel border border-obsidian/10 p-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <SearchInput
+                          value={reviewQuery}
+                          onChange={setReviewQuery}
+                          placeholder="Search reviews"
+                          className="min-w-[200px] flex-1"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCreateReviewOpen(true)}
+                        >
+                          Create new review
+                        </Button>
+                      </div>
+                      <ul className="mt-2 flex max-h-[260px] flex-col overflow-y-auto">
+                        {matches.length === 0 ? (
+                          <li className="px-2 py-3 text-[12px] text-obsidian/45">
+                            No reviews match that search.
+                          </li>
+                        ) : (
+                          matches.map((review) => (
+                            <li key={review.id}>
+                              <button
+                                type="button"
+                                onClick={() => update('reviewId', review.id)}
+                                className={[
+                                  'flex w-full items-start gap-2 rounded-card-lg px-2 py-2 text-left transition-colors hover:bg-fog',
+                                  review.id === form.reviewId ? 'bg-primary/25' : '',
+                                ].join(' ')}
+                              >
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-[12px] font-medium">
+                                    {review.quote}
+                                  </span>
+                                  <span className="mt-0.5 block truncate text-[11px] text-obsidian/50">
+                                    {review.authorName}
+                                    {review.company ? ` · ${review.company}` : ''}
+                                  </span>
+                                </span>
+                                {!review.isVisible && <span className="text-[10px] text-obsidian/40">Hidden</span>}
+                              </button>
+                            </li>
+                          ))
+                        )}
+                      </ul>
+                    </div>
+                  </>
+                )
+              })()}
             </div>
           )}
 
@@ -894,6 +1011,52 @@ export default function ProjectEditor() {
           )}
         </div>
       </Panel>
+
+      <Modal
+        open={createReviewOpen}
+        onClose={() => setCreateReviewOpen(false)}
+        title="Create a review"
+        description="It is added to the site list and selected for this project."
+        size="md"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setCreateReviewOpen(false)} disabled={creatingReview}>
+              Cancel
+            </Button>
+            <Button loading={creatingReview} onClick={() => void createReview()}>
+              Create and select
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <Textarea
+            label="Quote"
+            value={newReview.quote}
+            onChange={(event) => setNewReview((current) => ({ ...current, quote: event.target.value }))}
+            rows={4}
+            maxLength={800}
+            counter={`${newReview.quote.length}/800`}
+            placeholder="What did the client say?"
+          />
+          <TextInput
+            label="Author name"
+            value={newReview.authorName}
+            onChange={(event) =>
+              setNewReview((current) => ({ ...current, authorName: event.target.value }))
+            }
+            maxLength={100}
+            placeholder="Holly"
+          />
+          <TextInput
+            label="Company"
+            value={newReview.company}
+            onChange={(event) => setNewReview((current) => ({ ...current, company: event.target.value }))}
+            maxLength={100}
+            placeholder="Eventotron"
+          />
+        </div>
+      </Modal>
 
       <ConfirmDialog
         open={confirmDelete}

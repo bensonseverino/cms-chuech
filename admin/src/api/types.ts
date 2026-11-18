@@ -91,6 +91,7 @@ export type ProjectInput = {
   featureText?: string
   featureImage?: ImageRef
   gallery?: ImageRef[]
+  reviewId?: string | null
   testimonialQuote?: string
   testimonialAuthor?: string
   testimonialCompany?: string
@@ -183,17 +184,41 @@ export type EntryListResponse = {
   media: MediaMap
 }
 
+export type FormFieldDefView = {
+  id: string
+  type: string
+  label: string
+  placeholder?: string
+  required?: boolean
+  options?: string[]
+  validation?: { min?: number; max?: number; pattern?: string; message?: string }
+}
+
+export type AutoresponderConfig = {
+  enabled: boolean
+  subject: string
+  body: string
+}
+
 export type FormView = {
   source: string
   label: string
   enabled: boolean
   notifyEmails: string[]
   successMessage: string
+  fields: FormFieldDefView[]
+  autoresponder: AutoresponderConfig | null
   autoRegistered: boolean
   createdAt: string
   totalCount: number
   newCount: number
   lastSubmissionAt: string | null
+}
+
+export type SubmissionContext = {
+  page?: string
+  projectSlug?: string
+  projectTitle?: string
 }
 
 export type SubmissionView = {
@@ -213,6 +238,12 @@ export type SubmissionView = {
   utm: Record<string, unknown>
   userAgent: string | null
   turnstileOk: boolean
+  /** Inbox triage (forms-reviews spec §3): null means unread. */
+  readAt: string | null
+  isStarred: boolean
+  context: SubmissionContext | null
+  notifyStatus: string
+  notifyError: string | null
   notes: string
   handledBy: string | null
   handledByEmail: string | null
@@ -226,6 +257,46 @@ export type SubmissionListResponse = {
   page: number
   limit: number
   counts: Record<string, number>
+}
+
+export type SubmissionDetailResponse = {
+  item: SubmissionView
+  form: FormView | null
+  neighbours: { newerId: string | null; olderId: string | null }
+}
+
+export type ReviewView = {
+  id: string
+  quote: string
+  authorName: string
+  authorRole: string | null
+  company: string | null
+  avatar: string | null
+  rating: number | null
+  source: string | null
+  sourceUrl: string | null
+  reviewedAt: string | null
+  isFeatured: boolean
+  isVisible: boolean
+  position: number
+  createdAt: string
+  updatedAt: string
+  usedCount: number
+}
+
+export type ReviewListResponse = {
+  items: ReviewView[]
+}
+
+export type ReviewDetailResponse = {
+  item: ReviewView
+  usedBy: { id: string; title: string }[]
+}
+
+export type NotificationsSettings = {
+  enabled: boolean
+  emails: string[]
+  provider: { email: boolean; turnstile: boolean }
 }
 
 export type FormSourceOption = {

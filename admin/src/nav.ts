@@ -7,6 +7,7 @@ import {
   Inbox,
   LayoutDashboard,
   Layers,
+  MessageSquareQuote,
   Settings,
   Users,
 } from 'lucide-react'
@@ -43,8 +44,8 @@ export const NAV: NavSection[] = [
       { label: 'Inbox', to: '/submissions', icon: Inbox },
       { label: 'Pages', to: '/pages', icon: FileText },
       { label: 'Projects', to: '/projects', icon: Layers },
+      { label: 'Reviews', to: '/reviews', icon: MessageSquareQuote },
       { label: 'Services', to: '/collections/services', icon: Layers },
-      { label: 'Testimonials', to: '/collections/testimonials', icon: Layers },
       { label: 'Clients', to: '/collections/clients', icon: Layers },
       { label: 'Articles', to: '/collections/articles', icon: Layers },
     ],

@@ -13,15 +13,16 @@ import { isObject, readJsonBody, run, stringArray } from '../_lib/http'
  * POST /api/admin/submissions/bulk
  *
  * One endpoint for the inbox's bulk menu. Deletion is admin-only; status and
- * read/unread changes are editor-level.
+ * read/unread changes are editor-level. Actions (forms-reviews spec §6):
+ * read | unread | archive | spam | restore | delete.
  */
 
 const STATUS_ACTIONS: Record<string, string> = {
-  read: 'read',
-  unread: 'new',
-  replied: 'replied',
+  archive: 'archived',
   spam: 'spam',
-  archived: 'archived',
+  // `replied` is not in the bulk menu but the status selector shares the
+  // shape, so it stays available here.
+  replied: 'replied',
 }
 
 export const onRequestPost: PagesFunction<Env> = (context) =>
@@ -66,25 +67,55 @@ export const onRequestPost: PagesFunction<Env> = (context) =>
       return json({ ok: true, updated: unique.length })
     }
 
+    // Read/unread touch `read_at` (and nudge `status` so the counts agree);
+    // the other actions move `status` and clear the unread state.
+    if (action === 'read' || action === 'unread') {
+      await context.env.DB.prepare(
+        `UPDATE submissions
+            SET read_at = ${action === 'read' ? "COALESCE(read_at, datetime('now'))" : 'NULL'},
+                status = CASE WHEN status ${action === 'read' ? "= 'new'" : "= 'read'"}
+                              THEN '${action === 'read' ? 'read' : 'new'}' ELSE status END,
+                handled_by = ?, updated_at = datetime('now')
+          WHERE id IN (${placeholders})`,
+      )
+        .bind(action === 'read' ? user.id : null, ...unique)
+        .run()
+
+      await audit(
+        context.env,
+        actorOf(user),
+        'bulk',
+        'submission',
+        null,
+        `Marked ${unique.length} submission${unique.length === 1 ? '' : 's'} ${action}`,
+      )
+
+      return json({ ok: true, updated: unique.length })
+    }
+
     const status = STATUS_ACTIONS[action]
-    if (!status) return error('bad_request', 'Unknown bulk action')
+    if (action === 'restore' || status) {
+      // Restore sends rows back to the top of the inbox as unread.
+      const nextStatus = action === 'restore' ? 'new' : status
+      await context.env.DB.prepare(
+        `UPDATE submissions
+            SET status = ?, read_at = NULL, handled_by = ?, updated_at = datetime('now')
+          WHERE id IN (${placeholders})`,
+      )
+        .bind(nextStatus, user.id, ...unique)
+        .run()
 
-    await context.env.DB.prepare(
-      `UPDATE submissions
-          SET status = ?, handled_by = ?, updated_at = datetime('now')
-        WHERE id IN (${placeholders})`,
-    )
-      .bind(status, user.id, ...unique)
-      .run()
+      await audit(
+        context.env,
+        actorOf(user),
+        'bulk',
+        'submission',
+        null,
+        `${action === 'restore' ? 'Restored' : `Marked ${action}`} ${unique.length} submission${unique.length === 1 ? '' : 's'}`,
+      )
 
-    await audit(
-      context.env,
-      actorOf(user),
-      'bulk',
-      'submission',
-      null,
-      `Marked ${unique.length} submission${unique.length === 1 ? '' : 's'} ${action}`,
-    )
+      return json({ ok: true, updated: unique.length })
+    }
 
-    return json({ ok: true, updated: unique.length })
+    return error('bad_request', 'Unknown bulk action')
   })

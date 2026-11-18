@@ -14,6 +14,7 @@ import {
   submissionView,
 } from '../_lib/submissions'
 import { isObject, readJsonBody, run, stringValue } from '../_lib/http'
+import { loadForm, formView } from '../_lib/forms'
 
 /*
  * GET    /api/admin/submissions/:id — one submission + its neighbours
@@ -29,7 +30,16 @@ export const onRequestGet: PagesFunction<Env> = (context) =>
     const row = await loadSubmission(context.env, id)
     if (!row) return error('not_found', 'No such submission')
 
-    return json({ item: submissionView(row), neighbours: await neighbours(context.env, row) })
+    // The drawer shows the stored field values under the form's own labels
+    // (forms-reviews spec §7). A missing form row (legacy source) just means
+    // the UI falls back to the raw keys.
+    const form = await loadForm(context.env, row.source)
+
+    return json({
+      item: submissionView(row),
+      form: form ? formView(form) : null,
+      neighbours: await neighbours(context.env, row),
+    })
   })
 
 export const onRequestPatch: PagesFunction<Env> = (context) =>
@@ -50,7 +60,11 @@ export const onRequestPatch: PagesFunction<Env> = (context) =>
 
     const hasStatus = body.value.status !== undefined
     const hasNotes = body.value.notes !== undefined
-    if (!hasStatus && !hasNotes) return error('bad_request', 'Nothing to update')
+    const hasStarred = body.value.isStarred !== undefined
+    const hasRead = body.value.read !== undefined
+    if (!hasStatus && !hasNotes && !hasStarred && !hasRead) {
+      return error('bad_request', 'Nothing to update')
+    }
 
     let status = row.status
     if (hasStatus) {
@@ -69,12 +83,34 @@ export const onRequestPatch: PagesFunction<Env> = (context) =>
       notes = value
     }
 
+    // Star (forms-reviews spec §7): a boolean toggle.
+    let isStarred = row.is_starred === 1
+    if (hasStarred) {
+      if (typeof body.value.isStarred !== 'boolean') {
+        return error('bad_request', '`isStarred` must be a boolean')
+      }
+      isStarred = body.value.isStarred
+    }
+
+    // Read/unread: `read: true` stamps read_at; `read: false` clears it. The
+    // status follows along when it is still in its default state, so a row can
+    // never read "Read" while carrying an unread dot (spec §7).
+    let readAt = row.read_at
+    if (hasRead) {
+      if (typeof body.value.read !== 'boolean') {
+        return error('bad_request', '`read` must be a boolean')
+      }
+      readAt = body.value.read ? new Date().toISOString().replace('T', ' ').slice(0, 19) : null
+      if (!hasStatus && body.value.read && status === 'new') status = 'read'
+      if (!hasStatus && !body.value.read && status === 'read') status = 'new'
+    }
+
     await context.env.DB.prepare(
       `UPDATE submissions
-          SET status = ?, notes = ?, handled_by = ?, updated_at = datetime('now')
+          SET status = ?, notes = ?, is_starred = ?, read_at = ?, handled_by = ?, updated_at = datetime('now')
         WHERE id = ?`,
     )
-      .bind(status, notes, user.id, id)
+      .bind(status, notes, isStarred ? 1 : 0, readAt, user.id, id)
       .run()
 
     await audit(
@@ -83,7 +119,13 @@ export const onRequestPatch: PagesFunction<Env> = (context) =>
       hasStatus ? 'status' : 'update',
       'submission',
       id,
-      hasStatus ? `Marked submission ${status}` : 'Updated internal notes',
+      hasStatus
+        ? `Marked submission ${status}`
+        : hasStarred
+          ? `${isStarred ? 'Starred' : 'Unstarred'} submission`
+          : hasRead
+            ? `Marked submission ${readAt ? 'read' : 'unread'}`
+            : 'Updated internal notes',
     )
 
     const updated = await loadSubmission(context.env, id)

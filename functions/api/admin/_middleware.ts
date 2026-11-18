@@ -89,6 +89,8 @@ function withAdminHeaders(response: Response): Response {
   for (const [key, value] of Object.entries(ADMIN_HEADERS)) headers.set(key, value)
   headers.set('X-Frame-Options', 'DENY')
   headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  // Submissions and inbox data must never be cached (forms-reviews spec §13).
+  headers.set('Cache-Control', 'no-store')
   return new Response(response.body, { status: response.status, headers })
 }
 

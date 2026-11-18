@@ -104,6 +104,9 @@ export const projectSchema = draftObject({
   testimonialAuthor: inlineText(120),
   testimonialCompany: inlineText(120),
 
+  /** A linked CMS review (forms-reviews spec §11). Rendered instead of the inline fields when set. */
+  reviewId: z.string().max(64).nullish(),
+
   relatedMode: z.enum(['auto', 'manual']),
   relatedIds: z.array(z.string().max(64)).max(PROJECT_LIMITS.related),
 
@@ -137,6 +140,7 @@ export const PROJECT_INPUT_KEYS = [
   'testimonialQuote',
   'testimonialAuthor',
   'testimonialCompany',
+  'reviewId',
   'relatedMode',
   'relatedIds',
   'seoTitle',
@@ -167,6 +171,7 @@ export function emptyProject(): ProjectInput {
     position: 0,
     heroType: 'image',
     gallery: [],
+    reviewId: null,
     relatedMode: 'auto',
     relatedIds: [],
   }

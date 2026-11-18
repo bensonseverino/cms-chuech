@@ -17,6 +17,7 @@
     "test": "npm run test --workspaces --if-present",
     "test:forms": "node --experimental-strip-types scripts/smoke-forms.ts",
     "test:reviews": "node --experimental-strip-types scripts/smoke-reviews.ts",
+    "test:admin": "node --experimental-strip-types scripts/smoke-admin.ts",
     "dev:admin": "npm run dev --workspace @marino/admin",
     "predev:cms": "node scripts/prepare-local-wrangler.mjs",
     "dev:cms": "wrangler pages dev",

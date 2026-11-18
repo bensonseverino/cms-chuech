@@ -18,6 +18,7 @@ import {
   projectSaveStatements,
   validateProjectPayload,
 } from '../_lib/projects'
+import { reviewIdError } from '../_lib/reviews'
 
 /*
  * GET    /api/admin/projects/:id — the editor payload (project + media + categories)
@@ -65,6 +66,9 @@ export const onRequestPut: PagesFunction<Env> = (context) =>
       return error('unprocessable', 'Some fields need attention', { fields: validation.fields })
     }
     const input = validation.input
+
+    const reviewError = await reviewIdError(context.env, input.reviewId)
+    if (reviewError) return reviewError
 
     const categories = await categoryRowsForSlugs(context.env, input.categories ?? [])
     if (!categories) {

@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import {
   ArrowUpRight,
+  BellRing,
   BriefcaseBusiness,
   FileText,
   FormInput,
@@ -14,11 +16,14 @@ import {
   Users,
   Wrench,
 } from 'lucide-react'
-import type { DocumentListResponse } from '../api/types'
+import type { DocumentListResponse, NotificationsSettings } from '../api/types'
+import { api, errorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
 import { useAuth } from '../providers/AuthProvider'
+import { useToast } from '../providers/ToastProvider'
 import {
   Badge,
+  Button,
   EmptyState,
   ErrorState,
   LoadingRows,
@@ -26,6 +31,8 @@ import {
   Panel,
   PanelHeading,
   StatusBadge,
+  Textarea,
+  Toggle,
   buttonClass,
 } from '../components/ui'
 
@@ -119,6 +126,8 @@ export default function Settings() {
               </p>
             )}
           </Panel>
+
+          <NotificationsPanel />
 
           <div className="grid gap-[25px] xl:grid-cols-2">
             <LinkCard
@@ -265,6 +274,140 @@ export default function Settings() {
         </div>
       )}
     </>
+  )
+}
+
+function NotificationsPanel() {
+  const { push } = useToast()
+  const { data, loading, error, reload } = useApi<NotificationsSettings>('/settings/notifications')
+  const [enabled, setEnabled] = useState(true)
+  const [emails, setEmails] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
+
+  useEffect(() => {
+    if (!data) return
+    setEnabled(data.enabled)
+    setEmails(data.emails.join('\n'))
+  }, [data])
+
+  function payload() {
+    return {
+      enabled,
+      emails: emails
+        .split(/[\s,;]+/)
+        .map((email) => email.trim())
+        .filter(Boolean),
+    }
+  }
+
+  async function save() {
+    setSaving(true)
+    try {
+      await api.put('/settings/notifications', payload())
+      push({ title: 'Notification settings saved' })
+      reload()
+    } catch (cause) {
+      push({ tone: 'error', title: 'Could not save notifications', description: errorMessage(cause) })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function sendTest() {
+    setTesting(true)
+    try {
+      // Test uses the saved settings, so persist what is on screen first.
+      await api.put('/settings/notifications', payload())
+      const response = await api.post<{ ok: boolean; to: string }>('/settings/test-email')
+      push({ title: 'Test email sent', description: response.to })
+      reload()
+    } catch (cause) {
+      push({ tone: 'error', title: 'The test email did not send', description: errorMessage(cause) })
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  return (
+    <Panel>
+      <PanelHeading
+        title="Notifications"
+        description="Who hears about a new submission when the form has no addresses of its own."
+        actions={
+          <BellRing size={16} strokeWidth={1.6} className="text-obsidian/35" aria-hidden="true" />
+        }
+      />
+
+      {loading && !data ? (
+        <LoadingRows rows={3} />
+      ) : error && !data ? (
+        <ErrorState error={error} onRetry={reload} />
+      ) : (
+        <div className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
+          <div className="flex flex-col gap-4">
+            <Toggle
+              checked={enabled}
+              onChange={setEnabled}
+              label="Send notification emails"
+              description="Turning this off keeps submissions in the inbox and sends nothing."
+            />
+            <Textarea
+              label="Recipients"
+              value={emails}
+              onChange={(event) => setEmails(event.target.value)}
+              hint="One email per line, or separated by commas."
+              rows={4}
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button icon={BellRing} size="sm" loading={saving} onClick={() => void save()}>
+                Save notifications
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                loading={testing}
+                onClick={() => void sendTest()}
+              >
+                Send test email
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-card-lg bg-fog/70 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-obsidian/40">
+              Provider status
+            </p>
+            <ul className="mt-2 flex flex-col gap-2 text-[12px]">
+              <li className="flex items-center justify-between gap-3">
+                <span className="text-obsidian/65">Email (Resend)</span>
+                {data?.provider.email ? (
+                  <Badge tone="mint" dot>
+                    Configured
+                  </Badge>
+                ) : (
+                  <Badge tone="outline">Not configured</Badge>
+                )}
+              </li>
+              <li className="flex items-center justify-between gap-3">
+                <span className="text-obsidian/65">Turnstile</span>
+                {data?.provider.turnstile ? (
+                  <Badge tone="mint" dot>
+                    Configured
+                  </Badge>
+                ) : (
+                  <Badge tone="outline">Not configured</Badge>
+                )}
+              </li>
+            </ul>
+            <p className="mt-3 text-[11px] leading-5 text-obsidian/45">
+              These indicators are read-only. Secrets live in the deployment environment, never in
+              the CMS.
+            </p>
+          </div>
+        </div>
+      )}
+    </Panel>
   )
 }
 

@@ -29,6 +29,12 @@ export type SubmissionRow = {
   user_agent: string | null
   ip_hash: string | null
   turnstile_ok: number
+  /** Inbox triage columns (forms-reviews spec §3). */
+  read_at: string | null
+  is_starred: number
+  context: string | null
+  notify_status: string
+  notify_error: string | null
   notes: string
   handled_by: string | null
   handled_by_email: string | null
@@ -54,6 +60,12 @@ export type SubmissionView = {
   utm: Record<string, unknown>
   userAgent: string | null
   turnstileOk: boolean
+  /** Inbox triage (forms-reviews spec §3, §7). */
+  readAt: string | null
+  isStarred: boolean
+  context: { page?: string; projectSlug?: string; projectTitle?: string } | null
+  notifyStatus: string
+  notifyError: string | null
   notes: string
   handledBy: string | null
   handledByEmail: string | null
@@ -64,7 +76,8 @@ export type SubmissionView = {
 export const SUBMISSION_SELECT = `
   SELECT s.id, s.source, s.status, s.name, s.email, s.phone, s.message,
          s.fields, s.page_path, s.referrer, s.utm, s.user_agent, s.ip_hash,
-         s.turnstile_ok, s.notes, s.handled_by, s.created_at, s.updated_at,
+         s.turnstile_ok, s.read_at, s.is_starred, s.context, s.notify_status,
+         s.notify_error, s.notes, s.handled_by, s.created_at, s.updated_at,
          f.label AS form_label, u.email AS handled_by_email
     FROM submissions s
     LEFT JOIN forms f ON f.source = s.source
@@ -79,6 +92,10 @@ export type SubmissionFilters = {
   to?: string
   /** Case-study slug from `_context` (cms-projects-spec.md §8). */
   project?: string
+  /** Only unread (read_at IS NULL). */
+  unread?: boolean
+  /** Only starred. */
+  starred?: boolean
 }
 
 export type BuiltFilter = { where: string; bindings: unknown[] }
@@ -101,16 +118,30 @@ export function buildSubmissionFilter(
   }
 
   if (filters.q) {
+    // `search_text` is the lowercased concat of every value (forms-reviews
+    // spec §3); the other columns cover legacy rows.
     conditions.push(
-      '(s.name LIKE ? OR s.email LIKE ? OR s.phone LIKE ? OR s.message LIKE ? OR s.fields LIKE ?)',
+      '(s.name LIKE ? OR s.email LIKE ? OR s.phone LIKE ? OR s.message LIKE ? OR s.fields LIKE ? OR s.search_text LIKE ?)',
     )
-    const like = `%${filters.q}%`
-    bindings.push(like, like, like, like, like)
+    const like = `%${filters.q.toLowerCase()}%`
+    bindings.push(like, like, like, like, like, like)
   }
 
   if (filters.project) {
-    conditions.push("json_extract(s.fields, '$._context.projectSlug') = ?")
-    bindings.push(filters.project)
+    // Legacy `_context` key (projects spec §8) and the new `context` column
+    // (forms-reviews spec §3) both carry the project slug.
+    conditions.push(
+      "(json_extract(s.fields, '$._context.projectSlug') = ? OR json_extract(s.context, '$.projectSlug') = ?)",
+    )
+    bindings.push(filters.project, filters.project)
+  }
+
+  if (filters.unread) {
+    conditions.push('s.read_at IS NULL')
+  }
+
+  if (filters.starred) {
+    conditions.push('s.is_starred = 1')
   }
 
   if (filters.from && isIsoDate(filters.from)) {
@@ -140,12 +171,17 @@ export function submissionView(row: SubmissionRow): SubmissionView {
     phone: row.phone,
     message: row.message,
     fields: parseObject(row.fields),
-    project: projectContext(parseObject(row.fields)),
+    project: projectContext(parseObject(row.fields)) ?? contextProject(row.context),
     pagePath: row.page_path,
     referrer: row.referrer,
     utm: parseObject(row.utm),
     userAgent: row.user_agent,
     turnstileOk: row.turnstile_ok === 1,
+    readAt: row.read_at,
+    isStarred: row.is_starred === 1,
+    context: parseObject(row.context) as SubmissionView['context'],
+    notifyStatus: row.notify_status,
+    notifyError: row.notify_error,
     notes: row.notes,
     handledBy: row.handled_by,
     handledByEmail: row.handled_by_email,
@@ -173,6 +209,16 @@ function projectContext(fields: Record<string, unknown>): { slug: string; title:
   const context = raw as { projectSlug?: unknown; projectTitle?: unknown }
   const slug = typeof context.projectSlug === 'string' ? context.projectSlug : ''
   const title = typeof context.projectTitle === 'string' ? context.projectTitle : ''
+  if (!slug && !title) return null
+  return { slug, title }
+}
+
+/** The `context` column the new contract stores (forms-reviews spec §4). */
+function contextProject(raw: string | null): { slug: string; title: string } | null {
+  if (!raw) return null
+  const parsed = parseObject(raw) as { projectSlug?: unknown; projectTitle?: unknown }
+  const slug = typeof parsed.projectSlug === 'string' ? parsed.projectSlug : ''
+  const title = typeof parsed.projectTitle === 'string' ? parsed.projectTitle : ''
   if (!slug && !title) return null
   return { slug, title }
 }

@@ -22,6 +22,7 @@ import {
   uniqueSlug,
   validateProjectPayload,
 } from '../_lib/projects'
+import { reviewIdError } from '../_lib/reviews'
 
 /*
  * GET  /api/admin/projects — list/search/filter case studies
@@ -79,6 +80,9 @@ export const onRequestPost: PagesFunction<Env> = (context) =>
     const input = validation.input
     const id = newId()
 
+    const reviewError = await reviewIdError(context.env, input.reviewId)
+    if (reviewError) return reviewError
+
     const categories = await categoryRowsForSlugs(context.env, input.categories ?? [])
     if (!categories) {
       return error('unprocessable', 'Some fields need attention', {
@@ -104,10 +108,10 @@ export const onRequestPost: PagesFunction<Env> = (context) =>
            (id, slug, title, client_name, status, is_featured, position,
             card_image, hero_type, hero_image, hero_image_mobile, hero_video_url,
             hero_lead, hero_body, intro_html, feature_heading, feature_text,
-            feature_image, gallery, testimonial_quote, testimonial_author,
+            feature_image, gallery, review_id, testimonial_quote, testimonial_author,
             testimonial_company, related_mode, related_ids, seo_title,
             seo_description, og_image, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+         VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                  datetime('now'), datetime('now'))`,
       )
         .bind(
@@ -129,6 +133,7 @@ export const onRequestPost: PagesFunction<Env> = (context) =>
           stored.featureText ?? null,
           stored.featureImage ? JSON.stringify(stored.featureImage) : null,
           JSON.stringify(stored.gallery ?? []),
+          stored.reviewId ?? null,
           stored.testimonialQuote ?? null,
           stored.testimonialAuthor ?? null,
           stored.testimonialCompany ?? null,

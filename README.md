@@ -138,6 +138,12 @@ been verified: `/api/admin/health` currently returns the SPA fallback rather
 than JSON. The account also needs confirmation of the D1, R2 and KV bindings and the
 production origins, plus the owner `ADMIN_PASSWORD` secret.
 
+> **Privacy Policy note**: The Privacy Policy published on the website should
+> mention that form submissions are collected and stored in the CMS inbox, and
+> that visitors' data (name, email, message, etc.) is retained per the retention
+> policy. See the `submissions` table and `site_settings.notifications` for
+> details on data handling.
+
 `admin/wrangler.toml` names the Pages project `cms2chuech`; its resource ids,
 resource names and origin variables still need the values already present in
 Cloudflare. Cloudflare authentication in this environment has expired, so the

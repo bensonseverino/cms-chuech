@@ -7,7 +7,7 @@ import {
   type PagesFunction,
 } from '@marino/api-kit'
 import { actorOf, currentUser } from '../_lib/db'
-import { FORM_SELECT, formView, loadForm, normaliseEmails } from '../_lib/forms'
+import { FORM_SELECT, formView, loadForm, normaliseEmails, validateAutoresponder, validateFieldDefs } from '../_lib/forms'
 import { isObject, readJsonBody, run, stringValue } from '../_lib/http'
 
 /*
@@ -78,12 +78,30 @@ const update: PagesFunction<Env> = (context) =>
       successMessage = value
     }
 
+    // The field builder (forms-reviews spec §7): keys are locked behind the
+    // "Advanced: edit key" toggle in the UI, but the server validates them
+    // either way — unique, `^[a-zA-Z][a-zA-Z0-9_]*$` (spec §6).
+    let fields = row.fields
+    if (body.value.fields !== undefined) {
+      const parsed = validateFieldDefs(body.value.fields)
+      if (!parsed.ok) return parsed.response
+      fields = parsed.json
+    }
+
+    let autoresponder = row.autoresponder
+    if (body.value.autoresponder !== undefined) {
+      const parsed = validateAutoresponder(body.value.autoresponder)
+      if (!parsed.ok) return parsed.response
+      autoresponder = parsed.json
+    }
+
     await context.env.DB.prepare(
       `UPDATE forms
-          SET label = ?, enabled = ?, notify_emails = ?, success_message = ?
+          SET label = ?, enabled = ?, notify_emails = ?, success_message = ?,
+              fields = ?, autoresponder = ?
         WHERE source = ?`,
     )
-      .bind(label, enabled ? 1 : 0, emails, successMessage, source)
+      .bind(label, enabled ? 1 : 0, emails, successMessage, fields, autoresponder, source)
       .run()
 
     await audit(context.env, actorOf(user), 'update', 'form', source, `Updated form '${label}'`)

@@ -24,8 +24,42 @@ export default function AdminShell() {
   const { pathname } = useLocation()
   const { me, loading, error, reload } = useAuth()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [unread, setUnread] = useState(0)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  /*
+   * Inbox badge (forms-reviews spec §7): poll every 60 s, refetch on window
+   * focus, and refetch immediately when a screen dispatches a change.
+   */
+  useEffect(() => {
+    if (!me) return
+    let active = true
+
+    const load = () => {
+      api
+        .get<{ count: number }>('/submissions/unread-count')
+        .then((response) => {
+          if (active) setUnread(response.count)
+        })
+        .catch(() => {
+          // The badge is decoration; a failed poll never blocks the shell.
+        })
+    }
+
+    load()
+    const timer = window.setInterval(load, 60_000)
+    const onFocus = () => load()
+    window.addEventListener('focus', onFocus)
+    window.addEventListener('cms:inbox-changed', onFocus)
+
+    return () => {
+      active = false
+      window.clearInterval(timer)
+      window.removeEventListener('focus', onFocus)
+      window.removeEventListener('cms:inbox-changed', onFocus)
+    }
+  }, [me])
 
   useEffect(() => {
     const status = (error as { status?: number } | null)?.status
@@ -136,7 +170,7 @@ export default function AdminShell() {
         <div className="mb-[25px]">
           <Wordmark />
         </div>
-        <SidebarNav nav={nav} pathname={pathname} />
+        <SidebarNav nav={nav} pathname={pathname} unread={unread} />
         <UserCard user={me.user} />
       </nav>
 
@@ -180,6 +214,7 @@ export default function AdminShell() {
             <SidebarNav
               nav={nav}
               pathname={pathname}
+              unread={unread}
               onNavigate={() => setDrawerOpen(false)}
             />
             <UserCard user={me.user} />
@@ -217,10 +252,12 @@ export default function AdminShell() {
 function SidebarNav({
   nav,
   pathname,
+  unread = 0,
   onNavigate,
 }: {
   nav: NavSection[]
   pathname: string
+  unread?: number
   onNavigate?: () => void
 }) {
   return (
@@ -255,6 +292,17 @@ function SidebarNav({
                   >
                     <Icon size={18} strokeWidth={1.5} />
                     <span className="truncate">{item.label}</span>
+                    {item.to === '/submissions' && unread > 0 && (
+                      <span
+                        className={[
+                          'ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-pill px-1.5 text-[10px] font-bold tabular-nums',
+                          isActive ? 'bg-obsidian text-white' : 'bg-primary text-obsidian',
+                        ].join(' ')}
+                        aria-label={`${unread} unread submission${unread === 1 ? '' : 's'}`}
+                      >
+                        {unread > 99 ? '99+' : unread}
+                      </span>
+                    )}
                   </NavLink>
                 </li>
               )
