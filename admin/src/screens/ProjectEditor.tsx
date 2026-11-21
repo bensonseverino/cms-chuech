@@ -53,7 +53,7 @@ type Form = {
   featureHeading: string
   featureText: string
   gallery: { mediaId: string; alt?: string; focalX?: number; focalY?: number }[]
-  reviewId: string
+  reviewId: string | null
   testimonialQuote: string
   testimonialAuthor: string
   testimonialCompany: string

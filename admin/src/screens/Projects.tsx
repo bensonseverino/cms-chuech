@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import { useApi } from '../hooks/useApi'
+import { useAuth } from '../providers/AuthProvider'
 import { useToast } from '../providers/ToastProvider'
 import { api, queryString } from '../api/client'
 import type { ProjectView } from '../api/types'
@@ -26,7 +27,11 @@ type Category = { id: string; slug: string; label: string }
 
 export default function Projects() {
   const navigate = useNavigate()
+  const { me } = useAuth()
   const { push } = useToast()
+  // "View" must open the public site, not this SPA. A react-router <Link> here
+  // resolves against the CMS origin and lands on the admin's 404 page.
+  const siteOrigin = (me?.siteOrigin ?? '').replace(/\/+$/, '')
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<string | null>(null)
   const [showNew, setShowNew] = useState(false)
@@ -305,16 +310,17 @@ export default function Projects() {
                             Unpublish
                           </Button>
                         )}
-                        {item.status === 'published' && (
-                          <Link
-                            to={`/work/${item.slug}`}
+                        {item.status === 'published' && siteOrigin && (
+                          <a
+                            href={`${siteOrigin}/work/${encodeURIComponent(item.slug)}`}
                             target="_blank"
-                            rel="noopener"
+                            rel="noreferrer"
                             className="inline-flex items-center justify-center h-9 rounded-full border border-obsidian/15 bg-white px-3 text-xs font-medium text-obsidian hover:bg-fog"
+                            title={`Open ${siteOrigin}/work/${item.slug}`}
                           >
                             View
                             <ArrowRight size={12} className="-ml-1" />
-                          </Link>
+                          </a>
                         )}
                         <Button
                           size="sm"
