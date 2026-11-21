@@ -567,6 +567,10 @@ export default function ProjectEditor() {
               />
               <div className="flex flex-col gap-1.5">
                 <label className="text-[13px] font-semibold text-obsidian">Categories</label>
+                <p className="text-[12px] leading-5 text-obsidian/50">
+                  Choose where this work appears: a service page only shows published projects whose
+                  category matches that service (for example, Branding or Web Design).
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {categories.map((cat) => {
                     const selected = form.categories.includes(cat.slug)

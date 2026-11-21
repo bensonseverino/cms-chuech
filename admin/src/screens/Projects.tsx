@@ -19,6 +19,7 @@ import {
   Copy,
   CheckCircle,
   Edit2,
+  ExternalLink,
   Plus,
   Trash2,
 } from 'lucide-react'
@@ -135,6 +136,18 @@ export default function Projects() {
           <p className="text-sm text-obsidian/50">Case studies and work projects</p>
         </div>
         <div className="flex gap-2">
+          {siteOrigin && (
+            <a
+              href={`${siteOrigin}/work`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-obsidian/15 bg-white px-3 text-xs font-medium text-obsidian transition-colors hover:bg-fog"
+              title="See all published work on the site"
+            >
+              View all published work
+              <ExternalLink size={13} strokeWidth={1.7} aria-hidden="true" />
+            </a>
+          )}
           <Button variant="outline" onClick={() => setShowNew(true)}>
             <Plus size={16} />
             New project
@@ -311,16 +324,31 @@ export default function Projects() {
                           </Button>
                         )}
                         {item.status === 'published' && siteOrigin && (
-                          <a
-                            href={`${siteOrigin}/work/${encodeURIComponent(item.slug)}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center justify-center h-9 rounded-full border border-obsidian/15 bg-white px-3 text-xs font-medium text-obsidian hover:bg-fog"
-                            title={`Open ${siteOrigin}/work/${item.slug}`}
-                          >
-                            View
-                            <ArrowRight size={12} className="-ml-1" />
-                          </a>
+                          <>
+                            {/* "View" opens the published work listing so the
+                                owner sees ALL published work, not just the one
+                                row they clicked. */}
+                            <a
+                              href={`${siteOrigin}/work`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center justify-center h-9 rounded-full border border-obsidian/15 bg-white px-3 text-xs font-medium text-obsidian hover:bg-fog"
+                              title="See all published work on the site"
+                            >
+                              View
+                              <ArrowRight size={12} className="-ml-1" />
+                            </a>
+                            <a
+                              href={`${siteOrigin}/work/${encodeURIComponent(item.slug)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex h-9 w-9 items-center justify-center rounded-full text-obsidian/45 transition-colors hover:bg-fog hover:text-obsidian"
+                              title={`Open the ${item.title || item.slug} case study`}
+                              aria-label={`Open the ${item.title || item.slug} case study`}
+                            >
+                              <ExternalLink size={14} strokeWidth={1.7} />
+                            </a>
+                          </>
                         )}
                         <Button
                           size="sm"
