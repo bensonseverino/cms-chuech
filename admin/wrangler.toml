@@ -56,8 +56,8 @@ CMS_ORIGIN = "https://cms2chuech.pages.dev"
 # Email notifications (forms-reviews spec §5). NOTIFY_FROM must be a sender on
 # a domain verified with Resend. RESEND_API_KEY is a secret:
 #   npx wrangler pages secret put RESEND_API_KEY --project-name cms2chuech
-NOTIFY_FROM = "Chuech Studio CMS <notifications@chuechstudio.co.ke>"
-NOTIFY_DEFAULT_TO = "hello@chuechstudio.co.ke"
+NOTIFY_FROM = "Chuech Studio <hello@chuechstudio.co.ke>"
+NOTIFY_DEFAULT_TO = "benson7191@gmail.com"
 # Deep links in notification emails point here (no trailing slash).
 ADMIN_URL = "https://cms2chuech.pages.dev"
 
