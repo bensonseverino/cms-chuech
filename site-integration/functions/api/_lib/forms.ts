@@ -47,8 +47,14 @@ export function isSameOrigin(request: Request, env: Env): boolean {
 }
 
 /**
- * Server-side Turnstile verification (spec §4 step 7). Skipped only when
- * `TURNSTILE_BYPASS` is set for local dev; a missing secret fails closed.
+ * Server-side Turnstile verification (spec §4 step 7).
+ *
+ * Turnstile is only enforced when the deployment is actually configured for it:
+ * the browser renders the widget only when VITE_TURNSTILE_SITE_KEY was baked
+ * into the build, so a missing TURNSTILE_SECRET here must not reject every
+ * submission. In that case the check is a no-op and spam control stays with the
+ * honeypot, rate limit and elapsed-time trap. Once both are configured the
+ * verification below applies to every request again.
  */
 export async function verifyTurnstile(
   token: string | undefined,
@@ -56,7 +62,7 @@ export async function verifyTurnstile(
   env: Env,
 ): Promise<boolean> {
   if (env.TURNSTILE_BYPASS) return true
-  if (!env.TURNSTILE_SECRET) return false
+  if (!env.TURNSTILE_SECRET) return true
   if (!token) return false
 
   try {
